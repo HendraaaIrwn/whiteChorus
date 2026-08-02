@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: white_chorus_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      APP_URL: http://localhost:3000
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/white_chorus_test
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/white_chorus_test
+      SESSION_TOKEN_SECRET: ci-session-secret-at-least-thirty-two-characters
+      RATE_LIMIT_SECRET: ci-rate-limit-secret-at-least-thirty-two-characters
+      SUPABASE_URL: https://example.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ci-only-placeholder
+      CRON_SECRET: ci-cron-secret-at-least-thirty-two-characters
+      INTERNAL_ADMIN_SECRET: ci-admin-secret-at-least-thirty-two-characters
+      TURNSTILE_MODE: off
+      RUN_DATABASE_TESTS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm prisma:generate
+      - run: pnpm env:validate
+      - run: pnpm prisma:validate
+      - run: pnpm prisma:deploy
+      - run: pnpm assets:validate
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - run: pnpm test:e2e
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
