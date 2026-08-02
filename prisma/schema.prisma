@@ -1,0 +1,168 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  runtime      = "nodejs"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OutfitStatus {
+  PROCESSING
+  PUBLISHED
+  FAILED
+  HIDDEN
+  EXPIRED
+
+  @@map("outfit_status")
+}
+
+enum OutfitInteractionType {
+  NATIVE_SHARE
+  COPY_LINK
+  WHATSAPP
+  FACEBOOK
+  X
+  TELEGRAM
+  DOWNLOAD
+
+  @@map("outfit_interaction_type")
+}
+
+enum RateLimitAction {
+  SESSION_CREATE_HOURLY
+  OUTFIT_PUBLISH_HOURLY
+  OUTFIT_PUBLISH_DAILY
+  OUTFIT_PUBLISH_COOLDOWN
+  RATING_WRITE_HOURLY
+  INTERACTION_WRITE_HOURLY
+  DOWNLOAD_HOURLY
+
+  @@map("rate_limit_action")
+}
+
+model Guest {
+  id               String   @id @default(uuid()) @db.Uuid
+  sessionTokenHash String   @unique(map: "guests_session_token_hash_key") @map("session_token_hash") @db.Char(64)
+  ipHash           String?  @map("ip_hash") @db.Char(64)
+  userAgentHash    String?  @map("user_agent_hash") @db.Char(64)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastSeenAt       DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  expiresAt        DateTime @map("expires_at") @db.Timestamptz(3)
+
+  outfits      Outfit[]
+  ratings      Rating[]
+  interactions OutfitInteraction[]
+
+  @@index([expiresAt], map: "guests_expires_at_idx")
+  @@index([ipHash, createdAt(sort: Desc)], map: "guests_ip_hash_created_at_idx")
+  @@map("guests")
+}
+
+model Outfit {
+  id                    String       @id @default(uuid()) @db.Uuid
+  guestId               String       @map("guest_id") @db.Uuid
+  shortCode             String       @unique(map: "outfits_short_code_key") @map("short_code") @db.VarChar(12)
+  backgroundId          String       @map("background_id") @db.VarChar(64)
+  characterAConfig      Json         @map("character_a_config") @db.JsonB
+  characterBConfig      Json         @map("character_b_config") @db.JsonB
+  configurationHash     String       @map("configuration_hash") @db.Char(64)
+  finalImagePath        String?      @map("final_image_path") @db.VarChar(512)
+  downloadImagePath     String?      @map("download_image_path") @db.VarChar(512)
+  thumbnailPath         String?      @map("thumbnail_path") @db.VarChar(512)
+  socialImagePath       String?      @map("social_image_path") @db.VarChar(512)
+  status                OutfitStatus @default(PROCESSING)
+  ratingAverage         Decimal      @default(0) @map("rating_average") @db.Decimal(4, 3)
+  ratingCount           Int          @default(0) @map("rating_count")
+  weightedScore         Decimal      @default(0) @map("weighted_score") @db.Decimal(6, 4)
+  isCompetitionEligible Boolean      @default(true) @map("is_competition_eligible")
+  publishedAt           DateTime?    @map("published_at") @db.Timestamptz(3)
+  expiresAt             DateTime?    @map("expires_at") @db.Timestamptz(3)
+  hiddenAt              DateTime?    @map("hidden_at") @db.Timestamptz(3)
+  hiddenReason          String?      @map("hidden_reason") @db.VarChar(128)
+  failureReason         String?      @map("failure_reason") @db.VarChar(128)
+  createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  guest        Guest               @relation(fields: [guestId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "outfits_guest_id_fkey")
+  ratings      Rating[]
+  interactions OutfitInteraction[]
+  weeklyWinner WeeklyWinner?
+
+  @@index([status, expiresAt], map: "outfits_status_expires_at_idx")
+  @@index([status, publishedAt(sort: Desc)], map: "outfits_status_published_at_idx")
+  @@index([status, weightedScore(sort: Desc), ratingCount(sort: Desc), publishedAt(sort: Asc)], map: "outfits_top_rated_idx")
+  @@index([guestId, createdAt(sort: Desc)], map: "outfits_guest_created_at_idx")
+  @@index([guestId, configurationHash, createdAt(sort: Desc)], map: "outfits_duplicate_lookup_idx")
+  @@index([isCompetitionEligible, publishedAt(sort: Desc)], map: "outfits_competition_lookup_idx")
+  @@map("outfits")
+}
+
+model Rating {
+  id        String   @id @default(uuid()) @db.Uuid
+  outfitId  String   @map("outfit_id") @db.Uuid
+  guestId   String   @map("guest_id") @db.Uuid
+  value     Int      @db.SmallInt
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  outfit Outfit @relation(fields: [outfitId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ratings_outfit_id_fkey")
+  guest  Guest  @relation(fields: [guestId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ratings_guest_id_fkey")
+
+  @@unique([outfitId, guestId], map: "ratings_outfit_id_guest_id_key")
+  @@index([guestId, updatedAt(sort: Desc)], map: "ratings_guest_updated_at_idx")
+  @@map("ratings")
+}
+
+model OutfitInteraction {
+  id        String                @id @default(uuid()) @db.Uuid
+  outfitId  String                @map("outfit_id") @db.Uuid
+  guestId   String                @map("guest_id") @db.Uuid
+  type      OutfitInteractionType
+  createdAt DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  outfit Outfit @relation(fields: [outfitId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "outfit_interactions_outfit_id_fkey")
+  guest  Guest  @relation(fields: [guestId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "outfit_interactions_guest_id_fkey")
+
+  @@index([outfitId, createdAt(sort: Desc)], map: "outfit_interactions_outfit_created_at_idx")
+  @@index([guestId, createdAt(sort: Desc)], map: "outfit_interactions_guest_created_at_idx")
+  @@index([type, createdAt(sort: Desc)], map: "outfit_interactions_type_created_at_idx")
+  @@map("outfit_interactions")
+}
+
+model WeeklyWinner {
+  id                 String   @id @default(uuid()) @db.Uuid
+  sourceOutfitId     String?  @unique(map: "weekly_winners_source_outfit_id_key") @map("source_outfit_id") @db.Uuid
+  weekKey            String   @unique(map: "weekly_winners_week_key_key") @map("week_key") @db.Char(10)
+  weekStart          DateTime @map("week_start") @db.Timestamptz(3)
+  weekEnd            DateTime @map("week_end") @db.Timestamptz(3)
+  shortCode          String   @map("short_code") @db.VarChar(12)
+  winnerImagePath    String   @map("winner_image_path") @db.VarChar(512)
+  socialImagePath    String?  @map("social_image_path") @db.VarChar(512)
+  finalAverage       Decimal  @map("final_average") @db.Decimal(4, 3)
+  finalRatingCount   Int      @map("final_rating_count")
+  finalWeightedScore Decimal  @map("final_weighted_score") @db.Decimal(6, 4)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  sourceOutfit Outfit? @relation(fields: [sourceOutfitId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "weekly_winners_source_outfit_id_fkey")
+
+  @@unique([weekStart, weekEnd], map: "weekly_winners_week_period_key")
+  @@index([weekStart(sort: Desc)], map: "weekly_winners_week_start_idx")
+  @@map("weekly_winners")
+}
+
+model RateLimitCounter {
+  keyHash         String          @map("key_hash") @db.Char(64)
+  action          RateLimitAction
+  windowStartedAt DateTime        @map("window_started_at") @db.Timestamptz(3)
+  windowEndsAt    DateTime        @map("window_ends_at") @db.Timestamptz(3)
+  count           Int             @default(0)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@id([keyHash, action], map: "rate_limit_counters_pkey")
+  @@index([windowEndsAt], map: "rate_limit_counters_window_ends_at_idx")
+  @@map("rate_limit_counters")
+}
