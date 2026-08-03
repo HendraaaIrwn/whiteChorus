@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { MotionProvider } from "@/components/motion/motion-provider";
 import { MusicProvider } from "@/components/providers/music-provider";
 
 import "./globals.css";
@@ -21,7 +22,9 @@ export default function RootLayout({
   return (
     <html lang="en" data-scroll-behavior="smooth">
       <body>
-        <MusicProvider>{children}</MusicProvider>
+        <MotionProvider>
+          <MusicProvider>{children}</MusicProvider>
+        </MotionProvider>
       </body>
     </html>
   );

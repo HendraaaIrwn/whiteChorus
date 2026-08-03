@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
+import {
+  MotionPage,
+  RevealHeader,
+} from "@/components/motion/motion-primitives";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   getHallOfFamePage,
@@ -8,6 +11,7 @@ import {
 } from "@/features/hall-of-fame/hall-of-fame";
 import { OutfitCard } from "@/features/hall-of-fame/outfit-card";
 import { Pagination } from "@/features/hall-of-fame/pagination";
+import { SortTabs } from "@/features/hall-of-fame/sort-tabs";
 
 export const metadata: Metadata = {
   title: "Hall of Fame",
@@ -25,35 +29,20 @@ export default async function HallOfFamePage({
   const query = hallQuerySchema.parse(await searchParams);
   const result = await getHallOfFamePage(query);
   return (
-    <div className="page">
-      <header className="hall-heading">
+    <MotionPage className="page">
+      <RevealHeader className="hall-heading" inView={false}>
         <div>
           <p className="eyebrow">Community spotlight</p>
           <h1>HALL OF FAME</h1>
           <p>Fresh looks live for seven days. Stars decide who rises.</p>
         </div>
         <span aria-hidden="true">★</span>
-      </header>
-      <nav className="sort-tabs" aria-label="Sort Hall of Fame">
-        {[
-          ["newest", "NEWEST"],
-          ["top-rated", "TOP RATED"],
-          ["trending", "TRENDING"],
-        ].map(([value, label]) => (
-          <Link
-            key={value}
-            aria-current={query.sort === value ? "page" : undefined}
-            href={`/hall-of-fame?sort=${value}&page=1`}
-          >
-            {label}
-          </Link>
-        ))}
-        <Link href="/weekly-winners">WEEKLY WINNERS</Link>
-      </nav>
+      </RevealHeader>
+      <SortTabs activeSort={query.sort} />
       {result.items.length ? (
         <div className="hall-grid">
-          {result.items.map((outfit) => (
-            <OutfitCard key={outfit.id} outfit={outfit} />
+          {result.items.map((outfit, index) => (
+            <OutfitCard key={outfit.id} outfit={outfit} index={index} />
           ))}
         </div>
       ) : (
@@ -64,6 +53,6 @@ export default async function HallOfFamePage({
         totalPages={result.pagination.totalPages}
         sort={query.sort}
       />
-    </div>
+    </MotionPage>
   );
 }
