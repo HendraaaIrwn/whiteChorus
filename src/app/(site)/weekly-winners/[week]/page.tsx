@@ -2,6 +2,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import {
+  MotionPage,
+  Reveal,
+  RevealAside,
+} from "@/components/motion/motion-primitives";
 import { listWeeklyWinners } from "@/features/weekly-winners/weekly-winners";
 
 export const dynamic = "force-dynamic";
@@ -34,9 +39,9 @@ export default async function WeeklyWinnerPage({
   );
   if (!winner) notFound();
   return (
-    <div className="page detail-page">
+    <MotionPage className="page detail-page">
       <div className="detail-layout">
-        <div className="detail-image">
+        <Reveal className="detail-image" inView={false}>
           {winner.imageUrl ? (
             <img
               src={winner.imageUrl}
@@ -49,8 +54,13 @@ export default async function WeeklyWinnerPage({
               ★ ♪
             </div>
           )}
-        </div>
-        <aside className="detail-panel">
+        </Reveal>
+        <RevealAside
+          className="detail-panel"
+          delay={0.08}
+          distance={12}
+          inView={false}
+        >
           <p className="eyebrow">Week of {winner.weekKey}</p>
           <h1>ANONYMOUS LOOK #{winner.shortCode}</h1>
           <p>
@@ -58,8 +68,8 @@ export default async function WeeklyWinnerPage({
             ratings
           </p>
           <p>Final weighted score: {winner.finalWeightedScore.toFixed(3)}</p>
-        </aside>
+        </RevealAside>
       </div>
-    </div>
+    </MotionPage>
   );
 }

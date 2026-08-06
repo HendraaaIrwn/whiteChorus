@@ -2,6 +2,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import {
+  MotionPage,
+  RevealArticle,
+  RevealHeader,
+} from "@/components/motion/motion-primitives";
 import { EmptyState } from "@/components/ui/empty-state";
 import { listWeeklyWinners } from "@/features/weekly-winners/weekly-winners";
 
@@ -14,19 +19,23 @@ export const dynamic = "force-dynamic";
 export default async function WeeklyWinnersPage() {
   const winners = await listWeeklyWinners();
   return (
-    <div className="page">
-      <header className="hall-heading">
+    <MotionPage className="page">
+      <RevealHeader className="hall-heading" inView={false}>
         <div>
           <p className="eyebrow">Permanent spotlight</p>
           <h1>WEEKLY WINNERS</h1>
           <p>The community favourites that stay after their seven-day run.</p>
         </div>
         <span aria-hidden="true">★</span>
-      </header>
+      </RevealHeader>
       {winners.length ? (
         <div className="winner-grid">
           {winners.map((winner, index) => (
-            <article className="winner-card" key={winner.id}>
+            <RevealArticle
+              className="winner-card"
+              key={winner.id}
+              delay={Math.min(index, 3) * 0.06}
+            >
               {winner.imageUrl ? (
                 <img
                   src={winner.imageUrl}
@@ -52,7 +61,7 @@ export default async function WeeklyWinnersPage() {
                   VIEW WINNER →
                 </Link>
               </div>
-            </article>
+            </RevealArticle>
           ))}
         </div>
       ) : (
@@ -61,6 +70,6 @@ export default async function WeeklyWinnersPage() {
           body="A look needs at least five ratings before it can take the spotlight."
         />
       )}
-    </div>
+    </MotionPage>
   );
 }

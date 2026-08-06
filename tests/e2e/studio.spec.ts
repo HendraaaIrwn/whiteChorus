@@ -1,5 +1,49 @@
 import { expect, test } from "@playwright/test";
 
+test("keeps homepage content usable through the enhanced scroll choreography", async ({
+  page,
+}) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+
+  await page.goto("/");
+
+  const title = page.getByRole("heading", { name: "DRESS. CREATE. CHORUS." });
+  const processTitle = page.getByRole("heading", { name: "HOW IT WORKS" });
+  await expect(title).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Replay the animated guest avatar" }),
+  ).toBeAttached();
+
+  await processTitle.scrollIntoViewIfNeeded();
+  await expect(processTitle).toBeVisible();
+  await expect(page.getByText("DRESS THE DUO")).toBeVisible();
+
+  await title.scrollIntoViewIfNeeded();
+  await expect(title).toBeVisible();
+  expect(pageErrors).toEqual([]);
+});
+
+test("uses static homepage fallbacks when reduced motion is requested", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+
+  await expect(
+    page.getByRole("heading", { name: "DRESS. CREATE. CHORUS." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Replay the animated guest avatar" }),
+  ).toHaveCount(0);
+  await expect(page.locator(".rive-avatar-fallback")).toBeVisible();
+  await expect(page.locator(".home-scroll-rail")).toBeHidden();
+  await expect(page.locator(".hero-stage__spring-layer")).toHaveCSS(
+    "transform",
+    "none",
+  );
+});
+
 test("enters silently and restores a saved studio draft", async ({ page }) => {
   await page.route("**/api/guest/session", async (route) => {
     await route.fulfill({
@@ -75,4 +119,61 @@ test("reports an audio failure without blocking studio entry", async ({
   await expect(
     page.getByRole("button", { name: "Music unavailable" }),
   ).toBeVisible();
+});
+
+test("shows brief publish success feedback", async ({ page }) => {
+  await page.route("**/api/guest/session", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, data: {} }),
+    });
+  });
+  await page.route("**/api/outfits", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        data: { url: "/outfits/animated-look" },
+      }),
+    });
+  });
+
+  await page.goto("/studio");
+  await page.getByRole("button", { name: "PUBLISH TO HALL OF FAME" }).click();
+
+  await expect(page.getByText("LOOK IS LIVE!")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "VIEW YOUR LOOK" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Publish complete. Your look is live."),
+  ).toBeVisible();
+});
+
+test("keeps repeated studio interactions usable with reduced motion", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/studio");
+
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      ),
+    )
+    .toBe(true);
+
+  const friska = page.getByRole("button", { name: "DRESS FRISKA" });
+  await friska.click();
+  await expect(friska).toHaveAttribute("aria-pressed", "true");
+
+  await page.getByRole("tab", { name: "ACCESSORY" }).click();
+  const accessory = page.getByRole("radio", { name: "ACCESSORY 03" });
+  await accessory.click();
+  await expect(accessory).toHaveAttribute("aria-checked", "true");
+
+  await page.getByRole("tab", { name: "HAIR" }).click();
+  await page.getByRole("tab", { name: "ACCESSORY" }).click();
+  await expect(accessory).toHaveAttribute("aria-checked", "true");
 });

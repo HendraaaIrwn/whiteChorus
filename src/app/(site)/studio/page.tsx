@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 
+import {
+  MotionPage,
+  RevealHeader,
+} from "@/components/motion/motion-primitives";
 import { DressUpStudio } from "@/features/dress-up/dress-up-studio";
 
 export const metadata: Metadata = {
@@ -9,16 +13,16 @@ export const metadata: Metadata = {
 
 export default function StudioPage() {
   return (
-    <div className="page studio-page">
-      <header className="page-heading">
+    <MotionPage className="page studio-page">
+      <RevealHeader className="page-heading" inView={false}>
         <p className="eyebrow">Your stage, your chorus</p>
         <h1>STYLE EMIR &amp; FRISKA</h1>
         <p>
           Both characters share one scene. Switch between them and build a look
           worth spotlighting.
         </p>
-      </header>
+      </RevealHeader>
       <DressUpStudio />
-    </div>
+    </MotionPage>
   );
 }

@@ -4,6 +4,11 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import {
+  MotionPage,
+  Reveal,
+  RevealAside,
+} from "@/components/motion/motion-primitives";
 import { getServerEnv } from "@/config/env";
 import { findGuest } from "@/features/guest-session/guest-session";
 import { getOutfitDetail } from "@/features/outfits/get-outfit-detail";
@@ -54,7 +59,7 @@ export default async function OutfitPage({
   } catch (error) {
     if (error instanceof DomainError && error.status === 410)
       return (
-        <div className="page">
+        <MotionPage className="page">
           <section className="empty-state">
             <h1>THIS LOOK HAS LEFT THE STAGE</h1>
             <p>{error.message}</p>
@@ -62,17 +67,17 @@ export default async function OutfitPage({
               CREATE A NEW LOOK
             </Link>
           </section>
-        </div>
+        </MotionPage>
       );
     notFound();
   }
   return (
-    <div className="page detail-page">
+    <MotionPage className="page detail-page">
       <Link className="back-link" href="/hall-of-fame">
         ← BACK TO HALL OF FAME
       </Link>
       <div className="detail-layout">
-        <div className="detail-image">
+        <Reveal className="detail-image" inView={false}>
           {outfit.finalImageUrl ? (
             <img
               src={outfit.finalImageUrl}
@@ -85,8 +90,13 @@ export default async function OutfitPage({
               ♪ ✦
             </div>
           )}
-        </div>
-        <aside className="detail-panel">
+        </Reveal>
+        <RevealAside
+          className="detail-panel"
+          delay={0.08}
+          distance={12}
+          inView={false}
+        >
           <p className="eyebrow">Community look</p>
           <h1>ANONYMOUS LOOK #{outfit.shortCode}</h1>
           <p>
@@ -113,8 +123,8 @@ export default async function OutfitPage({
               getServerEnv().APP_URL,
             ).toString()}
           />
-        </aside>
+        </RevealAside>
       </div>
-    </div>
+    </MotionPage>
   );
 }

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Check, Copy, Download, Share2 } from "lucide-react";
 
+import { useHydratedReducedMotion } from "@/components/motion/use-hydrated-reduced-motion";
 import { Button } from "@/components/ui/button";
 import { ensureGuestSession } from "@/features/guest-session/ensure-guest-session";
 
@@ -17,6 +19,7 @@ export function ShareActions({
   downloadUrl: string;
   shareUrl: string;
 }) {
+  const reduceMotion = useHydratedReducedMotion();
   const [message, setMessage] = useState("");
   const shareText = `Rate White Chorus Look #${shortCode}`;
 
@@ -114,11 +117,21 @@ export function ShareActions({
       <Button variant="tertiary" onClick={() => void download()}>
         <Download aria-hidden="true" /> DOWNLOAD IMAGE
       </Button>
-      {message ? (
-        <p aria-live="polite">
-          <Check aria-hidden="true" size={16} /> {message}
-        </p>
-      ) : null}
+      <div className="share-feedback" aria-live="polite" aria-atomic="true">
+        <AnimatePresence initial={false} mode="wait">
+          {message ? (
+            <motion.p
+              key={message}
+              initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
+              transition={{ duration: reduceMotion ? 0.08 : 0.18 }}
+            >
+              <Check aria-hidden="true" size={16} /> {message}
+            </motion.p>
+          ) : null}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
