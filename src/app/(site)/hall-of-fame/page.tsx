@@ -1,17 +1,22 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { Suspense } from "react";
 
-import {
-  MotionPage,
-  RevealHeader,
-} from "@/components/motion/motion-primitives";
-import { EmptyState } from "@/components/ui/empty-state";
+import { getServerEnv } from "@/config/env";
+import { findGuest } from "@/features/guest-session/guest-session";
+import { DailySpotlight } from "@/features/hall-of-fame/daily-spotlight";
+import { getHallDailySpotlight } from "@/features/hall-of-fame/hall-daily-spotlight";
+import { HallCollection } from "@/features/hall-of-fame/hall-collection";
+import { HallOfFameCta } from "@/features/hall-of-fame/hall-of-fame-cta";
+import { HallOfFameHero } from "@/features/hall-of-fame/hall-of-fame-hero";
 import {
   getHallOfFamePage,
   hallQuerySchema,
+  type HallQuery,
 } from "@/features/hall-of-fame/hall-of-fame";
-import { OutfitCard } from "@/features/hall-of-fame/outfit-card";
-import { Pagination } from "@/features/hall-of-fame/pagination";
-import { SortTabs } from "@/features/hall-of-fame/sort-tabs";
+import { CustomCursor } from "@/features/home/home-motion";
+
+import HallLoading from "./loading";
 
 export const metadata: Metadata = {
   title: "Hall of Fame",
@@ -21,38 +26,50 @@ export const metadata: Metadata = {
 };
 export const dynamic = "force-dynamic";
 
+async function HallOfFameContent({
+  guestToken,
+  query,
+}: {
+  guestToken?: string;
+  query: HallQuery;
+}) {
+  const guest = await findGuest(guestToken);
+  const [hall, spotlight] = await Promise.all([
+    getHallOfFamePage(query, guest?.id),
+    getHallDailySpotlight(),
+  ]);
+
+  return (
+    <div className="hall-page" data-hall-page>
+      <CustomCursor scope="hall" />
+      <HallOfFameHero
+        firstLook={hall.items[0]}
+        totalItems={hall.pagination.totalItems}
+      />
+      <DailySpotlight state={spotlight} />
+      <HallCollection
+        activeSort={query.sort}
+        items={hall.items}
+        page={hall.pagination.page}
+        totalPages={hall.pagination.totalPages}
+      />
+      <HallOfFameCta />
+    </div>
+  );
+}
+
 export default async function HallOfFamePage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const query = hallQuerySchema.parse(await searchParams);
-  const result = await getHallOfFamePage(query);
+  const cookieStore = await cookies();
+  const guestToken = cookieStore.get(getServerEnv().SESSION_COOKIE_NAME)?.value;
+
   return (
-    <MotionPage className="page">
-      <RevealHeader className="hall-heading" inView={false}>
-        <div>
-          <p className="eyebrow">Community spotlight</p>
-          <h1>HALL OF FAME</h1>
-          <p>Fresh looks live for seven days. Stars decide who rises.</p>
-        </div>
-        <span aria-hidden="true">★</span>
-      </RevealHeader>
-      <SortTabs activeSort={query.sort} />
-      {result.items.length ? (
-        <div className="hall-grid">
-          {result.items.map((outfit, index) => (
-            <OutfitCard key={outfit.id} outfit={outfit} index={index} />
-          ))}
-        </div>
-      ) : (
-        <EmptyState />
-      )}
-      <Pagination
-        page={result.pagination.page}
-        totalPages={result.pagination.totalPages}
-        sort={query.sort}
-      />
-    </MotionPage>
+    <Suspense key={`${query.sort}:${query.page}`} fallback={<HallLoading />}>
+      <HallOfFameContent guestToken={guestToken} query={query} />
+    </Suspense>
   );
 }

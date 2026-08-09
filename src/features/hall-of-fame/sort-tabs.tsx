@@ -11,7 +11,13 @@ const tabs = [
   ["trending", "TRENDING"],
 ] as const;
 
-export function SortTabs({ activeSort }: { activeSort: string }) {
+export function SortTabs({
+  activeSort,
+  onNavigate,
+}: {
+  activeSort: string;
+  onNavigate?: () => void;
+}) {
   const reduceMotion = useHydratedReducedMotion();
 
   return (
@@ -22,14 +28,19 @@ export function SortTabs({ activeSort }: { activeSort: string }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduceMotion ? 0 : 0.22, delay: 0.06 }}
     >
-      {tabs.map(([value, label]) => {
+      {tabs.map(([value, label], index) => {
         const active = activeSort === value;
         return (
           <Link
             key={value}
             aria-current={active ? "page" : undefined}
             href={`/hall-of-fame?sort=${value}&page=1`}
+            prefetch={false}
+            scroll={false}
+            data-cursor="OPEN"
+            onClick={onNavigate}
           >
+            <span>{String(index + 1).padStart(2, "0")}</span>
             <span>{label}</span>
             {active ? (
               <motion.span
@@ -42,9 +53,6 @@ export function SortTabs({ activeSort }: { activeSort: string }) {
           </Link>
         );
       })}
-      <Link href="/weekly-winners">
-        <span>WEEKLY WINNERS</span>
-      </Link>
     </motion.nav>
   );
 }

@@ -25,7 +25,7 @@
 8. [Model `Outfit`](#8-model-outfit)
 9. [Model `Rating`](#9-model-rating)
 10. [Model `OutfitInteraction`](#10-model-outfitinteraction)
-11. [Model `WeeklyWinner`](#11-model-weeklywinner)
+11. [Model `DailyWinner`](#11-model-dailywinner)
 12. [Model `RateLimitCounter`](#12-model-ratelimitcounter)
 13. [Relasi dan Referential Actions](#13-relasi-dan-referential-actions)
 14. [Index Strategy](#14-index-strategy)
@@ -41,7 +41,7 @@
 24. [Publish Transaction](#24-publish-transaction)
 25. [Rating Transaction](#25-rating-transaction)
 26. [Rate Limit Counter Strategy](#26-rate-limit-counter-strategy)
-27. [Weekly Winner Query](#27-weekly-winner-query)
+27. [Daily Winner Query](#27-daily-winner-query)
 28. [Expiration dan Cleanup](#28-expiration-dan-cleanup)
 29. [Security Boundary](#29-security-boundary)
 30. [Data Retention](#30-data-retention)
@@ -57,7 +57,7 @@
 
 ## 1. Tujuan Dokumen
 
-Dokumen ini menetapkan schema Prisma final untuk White Chorus dan menjadi acuan implementasi database, migration, repository, transaction, cleanup, Hall of Fame, rating, weekly winner, dan abuse protection.
+Dokumen ini menetapkan schema Prisma final untuk White Chorus dan menjadi acuan implementasi database, migration, repository, transaction, cleanup, Hall of Fame, rating, daily winner, dan abuse protection.
 
 Schema dirancang untuk kebutuhan berikut:
 
@@ -92,7 +92,7 @@ Guest
 Outfit
 Rating
 OutfitInteraction
-WeeklyWinner
+DailyWinner
 RateLimitCounter
 ```
 
@@ -104,7 +104,7 @@ RateLimitCounter
 | `Outfit`            | Submission Hall of Fame, konfigurasi, image path, rating aggregate, dan status |
 | `Rating`            | Rating 1–5 dari satu guest terhadap satu outfit                                |
 | `OutfitInteraction` | Share intent dan download event untuk analytics, Trending, dan observability   |
-| `WeeklyWinner`      | Snapshot pemenang mingguan yang tidak ikut terhapus bersama submission reguler |
+| `DailyWinner`       | Snapshot pemenang mingguan yang tidak ikut terhapus bersama submission reguler |
 | `RateLimitCounter`  | Counter rate limit persisten untuk Vercel/serverless                           |
 
 ### 2.3 Model yang tidak digunakan
@@ -183,7 +183,7 @@ Sumber kebenaran rating individual tetap berada di tabel `ratings`.
 
 ### 3.6 Pemenang mingguan menggunakan snapshot
 
-`WeeklyWinner` menyimpan statistik dan image path final yang dibekukan pada saat winner dipilih.
+`DailyWinner` menyimpan statistik dan image path final yang dibekukan pada saat winner dipilih.
 
 Relasi ke source outfit bersifat nullable supaya snapshot tetap ada setelah source outfit dihapus.
 
@@ -207,7 +207,7 @@ Outfit
 ├── belongs to Guest
 ├── has many Rating
 ├── has many OutfitInteraction
-└── has zero or one WeeklyWinner snapshot
+└── has zero or one DailyWinner snapshot
 
 Rating
 ├── belongs to Guest
@@ -217,7 +217,7 @@ OutfitInteraction
 ├── belongs to Guest
 └── belongs to Outfit
 
-WeeklyWinner
+DailyWinner
 └── optionally references one source Outfit
 
 RateLimitCounter
@@ -243,7 +243,7 @@ Diagram ringkas:
                                               │ 0..1
                                               ▼
                                      ┌────────────────┐
-                                     │ WeeklyWinner   │
+                                     │ DailyWinner   │
                                      └────────────────┘
 
 ┌──────────────────┐
@@ -357,7 +357,7 @@ model Outfit {
   guest                    Guest        @relation(fields: [guestId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "outfits_guest_id_fkey")
   ratings                  Rating[]
   interactions             OutfitInteraction[]
-  weeklyWinner             WeeklyWinner?
+  dailyWinner             DailyWinner?
 
   @@index([status, expiresAt], map: "outfits_status_expires_at_idx")
   @@index([status, publishedAt(sort: Desc)], map: "outfits_status_published_at_idx")
@@ -409,12 +409,12 @@ model OutfitInteraction {
   @@map("outfit_interactions")
 }
 
-model WeeklyWinner {
+model DailyWinner {
   id                 String    @id @default(uuid()) @db.Uuid
-  sourceOutfitId     String?   @unique(map: "weekly_winners_source_outfit_id_key") @map("source_outfit_id") @db.Uuid
-  weekKey            String    @unique(map: "weekly_winners_week_key_key") @map("week_key") @db.Char(10)
-  weekStart          DateTime  @map("week_start") @db.Timestamptz(3)
-  weekEnd            DateTime  @map("week_end") @db.Timestamptz(3)
+  sourceOutfitId     String?   @unique(map: "daily_winners_source_outfit_id_key") @map("source_outfit_id") @db.Uuid
+  dayKey            String    @unique(map: "daily_winners_day_key_key") @map("day_key") @db.Char(10)
+  dayStart          DateTime  @map("day_start") @db.Timestamptz(3)
+  dayEnd            DateTime  @map("day_end") @db.Timestamptz(3)
 
   shortCode          String    @map("short_code") @db.VarChar(12)
   winnerImagePath    String    @map("winner_image_path") @db.VarChar(512)
@@ -426,11 +426,11 @@ model WeeklyWinner {
 
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  sourceOutfit       Outfit?   @relation(fields: [sourceOutfitId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "weekly_winners_source_outfit_id_fkey")
+  sourceOutfit       Outfit?   @relation(fields: [sourceOutfitId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "daily_winners_source_outfit_id_fkey")
 
-  @@unique([weekStart, weekEnd], map: "weekly_winners_week_period_key")
-  @@index([weekStart(sort: Desc)], map: "weekly_winners_week_start_idx")
-  @@map("weekly_winners")
+  @@unique([dayStart, dayEnd], map: "daily_winners_day_period_key")
+  @@index([dayStart(sort: Desc)], map: "daily_winners_day_start_idx")
+  @@map("daily_winners")
 }
 
 model RateLimitCounter {
@@ -755,7 +755,7 @@ Jumlah row rating.
 
 ### `weightedScore`
 
-Score Bayesian/weighted untuk ranking Top Rated dan weekly winner.
+Score Bayesian/weighted untuk ranking Top Rated dan daily winner.
 
 Nilai disimpan dengan empat digit desimal:
 
@@ -918,7 +918,7 @@ Karena relation `onDelete: Cascade`, interaction otomatis hilang saat submission
 
 ---
 
-## 11. Model `WeeklyWinner`
+## 11. Model `DailyWinner`
 
 ## 11.1 `sourceOutfitId`
 
@@ -932,11 +932,11 @@ onDelete: SetNull
 
 Saat source outfit dihapus setelah tujuh hari:
 
-- WeeklyWinner tidak ikut terhapus;
+- DailyWinner tidak ikut terhapus;
 - `sourceOutfitId` menjadi `null`;
 - snapshot image dan statistik tetap tersedia.
 
-## 11.2 `weekKey`
+## 11.2 `dayKey`
 
 Format:
 
@@ -955,7 +955,7 @@ Contoh:
 Digunakan pada URL:
 
 ```text
-/weekly-winners/2026-08-03
+/daily-winners/2026-08-03
 ```
 
 ## 11.3 Period uniqueness
@@ -963,12 +963,12 @@ Digunakan pada URL:
 Constraint:
 
 ```prisma
-@@unique([weekStart, weekEnd])
+@@unique([dayStart, dayEnd])
 ```
 
 mencegah dua pemenang untuk periode yang sama.
 
-`weekKey` juga unique sebagai public route key.
+`dayKey` juga unique sebagai public route key.
 
 ## 11.4 Frozen statistics
 
@@ -989,7 +989,7 @@ Nilai mencerminkan kondisi pada saat winner dipilih.
 Contoh:
 
 ```text
-weekly-winners/2026-08-03/winner.webp
+daily-winners/2026-08-03/winner.webp
 ```
 
 ---
@@ -1078,7 +1078,7 @@ WHERE window_ends_at < now() - interval '1 day';
 | Guest  | OutfitInteraction | Cascade                      | Interaction anonymous tidak perlu hidup tanpa guest          |
 | Outfit | Rating            | Cascade                      | Rating hilang bersama submission                             |
 | Outfit | OutfitInteraction | Cascade                      | Analytics regular hilang bersama submission                  |
-| Outfit | WeeklyWinner      | SetNull                      | Winner snapshot harus bertahan                               |
+| Outfit | DailyWinner       | SetNull                      | Winner snapshot harus bertahan                               |
 
 ### Aturan cleanup Guest
 
@@ -1167,7 +1167,7 @@ hash yang sama
 dalam 24 jam terakhir
 ```
 
-## 14.6 Weekly candidate lookup
+## 14.6 Daily candidate lookup
 
 ```prisma
 @@index([isCompetitionEligible, publishedAt(sort: Desc)])
@@ -1285,21 +1285,21 @@ ADD CONSTRAINT "ratings_value_check"
 CHECK ("value" BETWEEN 1 AND 5);
 
 
--- Weekly winner period and final values.
-ALTER TABLE "weekly_winners"
-ADD CONSTRAINT "weekly_winners_period_check"
-CHECK ("week_end" > "week_start");
+-- Daily winner period and final values.
+ALTER TABLE "daily_winners"
+ADD CONSTRAINT "daily_winners_period_check"
+CHECK ("day_end" > "day_start");
 
-ALTER TABLE "weekly_winners"
-ADD CONSTRAINT "weekly_winners_final_average_check"
+ALTER TABLE "daily_winners"
+ADD CONSTRAINT "daily_winners_final_average_check"
 CHECK ("final_average" >= 0 AND "final_average" <= 5);
 
-ALTER TABLE "weekly_winners"
-ADD CONSTRAINT "weekly_winners_final_rating_count_check"
+ALTER TABLE "daily_winners"
+ADD CONSTRAINT "daily_winners_final_rating_count_check"
 CHECK ("final_rating_count" >= 0);
 
-ALTER TABLE "weekly_winners"
-ADD CONSTRAINT "weekly_winners_final_weighted_score_check"
+ALTER TABLE "daily_winners"
+ADD CONSTRAINT "daily_winners_final_weighted_score_check"
 CHECK (
   "final_weighted_score" >= 0
   AND "final_weighted_score" <= 5
@@ -1373,7 +1373,7 @@ Gunakan Zod untuk:
 
 Tidak perlu mengaktifkan `pg_jsonschema` untuk MVP.
 
-## 16.4 Weekly eligibility
+## 16.4 Daily eligibility
 
 Eligibility mencakup:
 
@@ -1511,8 +1511,8 @@ DOWNLOAD_LIMIT_PER_HOUR=60
 SUBMISSION_RETENTION_DAYS=7
 GUEST_RETENTION_DAYS=14
 
-WEEKLY_TIMEZONE=Asia/Jakarta
-WEEKLY_MIN_RATINGS=5
+DAILY_TIMEZONE=Asia/Jakarta
+DAILY_MIN_RATINGS=5
 ```
 
 ### Jangan pernah menggunakan
@@ -1603,7 +1603,7 @@ Seed development dapat membuat:
 - 20 guest dummy;
 - 50 outfit dummy;
 - rating dummy;
-- 2 weekly winner snapshot.
+- 2 daily winner snapshot.
 
 Seed tidak perlu menjalankan Sharp untuk semua record.
 
@@ -1979,15 +1979,15 @@ Dengan begitu, failed publish tidak menghabiskan quota final.
 
 ---
 
-## 27. Weekly Winner Query
+## 27. Daily Winner Query
 
 Eligibility:
 
 ```text
 status = PUBLISHED
 isCompetitionEligible = true
-publishedAt >= weekStart
-publishedAt < weekEnd
+publishedAt >= dayStart
+publishedAt < dayEnd
 ratingCount >= minimumRatings
 ```
 
@@ -1999,8 +1999,8 @@ const candidates = await prisma.outfit.findMany({
     status: "PUBLISHED",
     isCompetitionEligible: true,
     publishedAt: {
-      gte: weekStart,
-      lt: weekEnd,
+      gte: dayStart,
+      lt: dayEnd,
     },
     ratingCount: {
       gte: minimumRatings,
@@ -2056,7 +2056,7 @@ Recommended:
 2. delete Storage objects;
 3. delete Outfit row;
 4. Rating dan OutfitInteraction terhapus melalui cascade;
-5. WeeklyWinner source relation menjadi null.
+5. DailyWinner source relation menjadi null.
 
 ## 28.3 Batch
 
@@ -2106,7 +2106,7 @@ guests
 outfits
 ratings
 outfit_interactions
-weekly_winners
+daily_winners
 rate_limit_counters
 ```
 
@@ -2128,7 +2128,7 @@ Server authorization tetap wajib.
 | Rating            | Mengikuti Outfit melalui cascade                       |
 | OutfitInteraction | Mengikuti Outfit melalui cascade                       |
 | Guest             | Sekitar 14 hari atau setelah tidak memiliki data aktif |
-| WeeklyWinner      | Selama campaign/hingga diarsipkan                      |
+| DailyWinner       | Selama campaign/hingga diarsipkan                      |
 | RateLimitCounter  | Dihapus setelah window berakhir + buffer               |
 | Failed Outfit     | Dapat dihapus setelah 1–3 hari untuk debugging         |
 | Raw IP            | Tidak disimpan                                         |
@@ -2175,15 +2175,15 @@ function toPublicOutfitCard(outfit: OutfitCardRecord) {
 - duplicate rating guest/outfit ditolak;
 - rating 0 dan 6 ditolak CHECK constraint;
 - negative rating count ditolak;
-- invalid weekly period ditolak;
+- invalid daily period ditolak;
 - rate limit negative count ditolak.
 
 ## 32.2 Referential action tests
 
 - delete Outfit menghapus Rating;
 - delete Outfit menghapus OutfitInteraction;
-- delete Outfit tidak menghapus WeeklyWinner;
-- `WeeklyWinner.sourceOutfitId` menjadi null;
+- delete Outfit tidak menghapus DailyWinner;
+- `DailyWinner.sourceOutfitId` menjadi null;
 - delete Guest menghapus child data ketika cleanup memang dilakukan.
 
 ## 32.3 Use-case tests
@@ -2193,7 +2193,7 @@ function toPublicOutfitCard(outfit: OutfitCardRecord) {
 - failed publish tidak menjadi PUBLISHED;
 - published Outfit memiliki seluruh image path;
 - duplicate detection hanya memblokir dalam window;
-- weekly winner period unique;
+- daily winner period unique;
 - expired Outfit tidak muncul di Hall of Fame.
 
 ## 32.4 Rate-limit concurrency test
@@ -2254,7 +2254,7 @@ ORDER BY
 LIMIT 20;
 ```
 
-## 33.5 Weekly candidate
+## 33.5 Daily candidate
 
 ```sql
 SELECT
@@ -2349,7 +2349,7 @@ Soft delete permanen bertentangan dengan retention requirement.
 
 Structured application logs cukup untuk MVP.
 
-Weekly winner snapshot dan interaction event sudah mencakup kebutuhan produk utama.
+Daily winner snapshot dan interaction event sudah mencakup kebutuhan produk utama.
 
 ## 35.6 Tidak ada Supabase Auth relation
 
@@ -2377,7 +2377,7 @@ White Chorus menggunakan custom anonymous guest cookie.
 
 - [ ] Rating 1–5 CHECK dibuat.
 - [ ] Rating aggregate CHECK dibuat.
-- [ ] Weekly value CHECK dibuat.
+- [ ] Daily value CHECK dibuat.
 - [ ] Publish artifact CHECK dibuat.
 - [ ] Rate-limit window CHECK dibuat.
 - [ ] Short-code format CHECK dibuat.
@@ -2386,9 +2386,9 @@ White Chorus menggunakan custom anonymous guest cookie.
 
 - [ ] Guest deletion cascade diuji.
 - [ ] Outfit deletion cascade diuji.
-- [ ] WeeklyWinner SetNull diuji.
+- [ ] DailyWinner SetNull diuji.
 - [ ] Unique rating diuji.
-- [ ] Unique weekly period diuji.
+- [ ] Unique daily period diuji.
 
 ### Runtime
 
@@ -2406,7 +2406,7 @@ White Chorus menggunakan custom anonymous guest cookie.
 - [ ] Duplicate window 24 jam.
 - [ ] Publish immutable.
 - [ ] Expiration tujuh hari.
-- [ ] Weekly minimum lima rating.
+- [ ] Daily minimum lima rating.
 - [ ] Rate-limit counter atomik.
 - [ ] Decimal dipetakan ke DTO.
 
@@ -2455,7 +2455,7 @@ Guest               → anonymous session
 Outfit              → published Hall of Fame submission
 Rating              → one guest, one outfit, one star value
 OutfitInteraction   → sharing, copy, and download events
-WeeklyWinner        → persistent weekly snapshot
+DailyWinner        → persistent daily snapshot
 RateLimitCounter    → persistent abuse controls for serverless
 ```
 

@@ -10,9 +10,9 @@ All JSON responses use `{ "ok": true, "data": ... }` or `{ "ok": false, "error":
 | PUT      | `/api/outfits/[id]/rating`        | Upsert 1–5 star rating                            |
 | POST     | `/api/outfits/[id]/share`         | Record share intent                               |
 | GET      | `/api/outfits/[id]/download`      | Download active PNG                               |
-| GET      | `/api/weekly-winners`             | List persistent winner snapshots                  |
+| GET      | `/api/daily-winners`              | Daily snapshots plus current live ranking         |
 | GET/POST | `/api/cron/expire-outfits`        | Retention cleanup; Bearer cron secret             |
-| GET/POST | `/api/cron/select-weekly-winner`  | Idempotent winner selection; Bearer cron secret   |
+| GET/POST | `/api/cron/select-daily-winner`   | Idempotent daily selection; Bearer cron secret    |
 | POST     | `/api/internal/outfits/[id]/hide` | Hide, restore, or disqualify with internal secret |
 | GET      | `/api/health`                     | Configuration and database health                 |
 

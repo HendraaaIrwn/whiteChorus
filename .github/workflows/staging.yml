@@ -1,0 +1,49 @@
+name: Staging verification
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: white-chorus-staging
+  cancel-in-progress: false
+
+jobs:
+  migrate-and-verify:
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      APP_URL: ${{ vars.APP_URL }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      SESSION_TOKEN_SECRET: ${{ secrets.SESSION_TOKEN_SECRET }}
+      RATE_LIMIT_SECRET: ${{ secrets.RATE_LIMIT_SECRET }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_STORAGE_BUCKET: ${{ vars.SUPABASE_STORAGE_BUCKET }}
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
+      TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
+      TURNSTILE_MODE: ${{ vars.TURNSTILE_MODE }}
+      DAILY_TIMEZONE: ${{ vars.DAILY_TIMEZONE }}
+      DAILY_MIN_RATINGS: ${{ vars.DAILY_MIN_RATINGS }}
+      DAILY_WINNER_ENABLED: ${{ vars.DAILY_WINNER_ENABLED }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      INTERNAL_ADMIN_SECRET: ${{ secrets.INTERNAL_ADMIN_SECRET }}
+      NEXT_PUBLIC_ASSET_MODE: ${{ vars.NEXT_PUBLIC_ASSET_MODE }}
+      RUN_DATABASE_TESTS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm prisma:generate
+      - run: pnpm env:validate
+      - name: Generate fixture dress-up assets
+        if: env.NEXT_PUBLIC_ASSET_MODE == 'fixture'
+        run: pnpm assets:generate:fixture
+      - name: Apply pending migrations using DIRECT_URL
+        run: pnpm prisma:deploy
+      - name: Run PostgreSQL integration tests against staging
+        run: pnpm test:postgres
+      - name: Verify database, Storage, Turnstile, and weekly configuration
+        run: pnpm staging:verify

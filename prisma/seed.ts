@@ -1,7 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 
 import { PrismaClient } from "../src/generated/prisma/client";
-import { getWeekPeriod } from "../src/features/weekly-winners/week-period";
+import { getDayPeriod } from "../src/features/daily-winners/day-period";
 
 async function main() {
   const connectionString = process.env.DATABASE_URL;
@@ -84,19 +84,19 @@ async function main() {
       where: { id: featured.id },
       data: { ratingAverage: 3, ratingCount: 5, weightedScore: 3 },
     });
-    const period = getWeekPeriod(new Date());
-    await prisma.weeklyWinner.upsert({
+    const period = getDayPeriod(new Date());
+    await prisma.dailyWinner.upsert({
       where: { sourceOutfitId: featured.id },
       update: {
-        weekKey: period.key,
-        weekStart: period.start,
-        weekEnd: period.end,
+        dayKey: period.key,
+        dayStart: period.start,
+        dayEnd: period.end,
       },
       create: {
         sourceOutfitId: featured.id,
-        weekKey: period.key,
-        weekStart: period.start,
-        weekEnd: period.end,
+        dayKey: period.key,
+        dayStart: period.start,
+        dayEnd: period.end,
         shortCode: featured.shortCode,
         winnerImagePath: featured.finalImagePath!,
         socialImagePath: featured.socialImagePath,

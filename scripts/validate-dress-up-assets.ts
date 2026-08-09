@@ -71,6 +71,10 @@ async function validateOfficialAssets() {
   for (const required of [
     productionAssets.audioPath,
     productionAssets.logoPath,
+    productionAssets.defaultLookPath,
+    productionAssets.defaultSocialPath,
+    ...Object.values(productionAssets.characterLooks),
+    ...Object.values(productionAssets.characterIcons),
     ...productionAssets.characterBases.map((asset) => asset.path),
     productionAssets.watermarkPath,
   ]) {
@@ -89,6 +93,32 @@ async function validateOfficialAssets() {
         );
     } catch {
       errors.push(`Unreadable render image: ${file}`);
+    }
+  }
+
+  const derivedSizes = new Map<string, [number, number]>([
+    [productionAssets.defaultLookPath, [1200, 1600]],
+    [productionAssets.defaultSocialPath, [1200, 630]],
+    [productionAssets.characterLooks.emir, [1200, 1600]],
+    [productionAssets.characterLooks.friska, [1200, 1600]],
+    [productionAssets.characterIcons.emir, [256, 256]],
+    [productionAssets.characterIcons.friska, [256, 256]],
+    [productionAssets.logoPath, [320, 144]],
+  ]);
+  for (const [file, [expectedWidth, expectedHeight]] of derivedSizes) {
+    const absolute = path.join(process.cwd(), "public", file.slice(1));
+    if (!existsSync(absolute)) continue;
+    try {
+      const metadata = await sharp(absolute).metadata();
+      if (
+        metadata.width !== expectedWidth ||
+        metadata.height !== expectedHeight
+      )
+        errors.push(
+          `Derived asset must be ${expectedWidth}x${expectedHeight}: ${file} is ${metadata.width}x${metadata.height}`,
+        );
+    } catch {
+      errors.push(`Unreadable derived asset: ${file}`);
     }
   }
 

@@ -11,7 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "",
     "/studio",
     "/hall-of-fame",
-    "/weekly-winners",
+    "/daily-winners",
   ].map((path) => ({ url: `${base}${path}`, lastModified: new Date() }));
   if (!hasServerConfiguration()) return staticRoutes;
   try {
@@ -21,8 +21,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         where: { status: "PUBLISHED", expiresAt: { gt: now } },
         select: { id: true, updatedAt: true },
       }),
-      getPrisma().weeklyWinner.findMany({
-        select: { weekKey: true, createdAt: true },
+      getPrisma().dailyWinner.findMany({
+        select: { dayKey: true, createdAt: true },
       }),
     ]);
     return [
@@ -32,7 +32,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: outfit.updatedAt,
       })),
       ...winners.map((winner) => ({
-        url: `${base}/weekly-winners/${winner.weekKey.trim()}`,
+        url: `${base}/daily-winners/${winner.dayKey.trim()}`,
         lastModified: winner.createdAt,
       })),
     ];

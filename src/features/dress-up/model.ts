@@ -55,7 +55,7 @@ export const defaultConfiguration: DressUpConfiguration = {
   version: 1,
   backgroundId: "background-01",
   characterA: {
-    hairId: "a-hair-01",
+    hairId: null,
     topId: "a-top-01",
     bottomId: "a-bottom-01",
     onePieceId: null,
@@ -63,13 +63,20 @@ export const defaultConfiguration: DressUpConfiguration = {
     accessoryIds: [],
   },
   characterB: {
-    hairId: "b-hair-01",
+    hairId: null,
     topId: "b-top-01",
     bottomId: "b-bottom-01",
     onePieceId: null,
     shoesId: "b-shoes-01",
     accessoryIds: [],
   },
+};
+
+export const resetConfiguration: DressUpConfiguration = {
+  version: 1,
+  backgroundId: "background-01",
+  characterA: { ...emptyCharacter },
+  characterB: { ...emptyCharacter },
 };
 
 export function normalizeConfiguration(

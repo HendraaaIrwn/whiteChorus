@@ -1,19 +1,16 @@
-/* eslint-disable @next/next/no-img-element */
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import {
-  MotionPage,
-  Reveal,
-  RevealAside,
-} from "@/components/motion/motion-primitives";
 import { getServerEnv } from "@/config/env";
+import { productionAssets } from "@/features/dress-up/catalog";
 import { findGuest } from "@/features/guest-session/guest-session";
+import { getRelatedOutfits } from "@/features/hall-of-fame/hall-of-fame";
+import { CustomCursor } from "@/features/home/home-motion";
 import { getOutfitDetail } from "@/features/outfits/get-outfit-detail";
-import { StarRating } from "@/features/ratings/star-rating";
-import { ShareActions } from "@/features/sharing/share-actions";
+import { LookDetail } from "@/features/outfits/look-detail";
+import { RelatedLooks } from "@/features/outfits/related-looks";
 import { DomainError } from "@/server/http/domain-error";
 
 export const dynamic = "force-dynamic";
@@ -37,9 +34,9 @@ export async function generateMetadata({
       title: `Anonymous Look #${outfit.shortCode}`,
       description:
         "Rate this anonymous look and discover more styles in the White Chorus Hall of Fame.",
-      openGraph: outfit.socialImageUrl
-        ? { images: [outfit.socialImageUrl] }
-        : undefined,
+      openGraph: {
+        images: [outfit.socialImageUrl || productionAssets.defaultSocialPath],
+      },
       alternates: { canonical: `/outfits/${outfit.id}` },
     };
   } catch {
@@ -57,74 +54,51 @@ export default async function OutfitPage({
   try {
     outfit = await load(id);
   } catch (error) {
-    if (error instanceof DomainError && error.status === 410)
+    if (error instanceof DomainError && error.status === 410) {
       return (
-        <MotionPage className="page">
-          <section className="empty-state">
-            <h1>THIS LOOK HAS LEFT THE STAGE</h1>
+        <div className="hall-page look-detail-page look-detail-state-page">
+          <CustomCursor scope="hall" />
+          <section
+            className="look-detail-state"
+            aria-labelledby="look-expired-title"
+          >
+            <span className="look-detail-state__label">THE SEVEN-DAY RUN</span>
+            <h1 id="look-expired-title">THIS LOOK HAS LEFT THE STAGE.</h1>
             <p>{error.message}</p>
-            <Link className="button button--primary button--md" href="/studio">
-              CREATE A NEW LOOK
-            </Link>
-          </section>
-        </MotionPage>
-      );
-    notFound();
-  }
-  return (
-    <MotionPage className="page detail-page">
-      <Link className="back-link" href="/hall-of-fame">
-        ← BACK TO HALL OF FAME
-      </Link>
-      <div className="detail-layout">
-        <Reveal className="detail-image" inView={false}>
-          {outfit.finalImageUrl ? (
-            <img
-              src={outfit.finalImageUrl}
-              width="1200"
-              height="1600"
-              alt={`Anonymous White Chorus outfit ${outfit.shortCode}.`}
-            />
-          ) : (
-            <div className="outfit-card__placeholder" aria-hidden="true">
-              ♪ ✦
+            <div className="look-detail-state__actions">
+              <Link
+                className="button button--primary button--md"
+                href="/hall-of-fame"
+                data-cursor="OPEN"
+              >
+                EXPLORE THE HALL
+              </Link>
+              <Link
+                className="look-detail-state__link"
+                href="/studio"
+                data-cursor="DRESS"
+              >
+                CREATE A NEW LOOK ↗
+              </Link>
             </div>
-          )}
-        </Reveal>
-        <RevealAside
-          className="detail-panel"
-          delay={0.08}
-          distance={12}
-          inView={false}
-        >
-          <p className="eyebrow">Community look</p>
-          <h1>ANONYMOUS LOOK #{outfit.shortCode}</h1>
-          <p>
-            This look stays in the Hall of Fame until{" "}
-            {new Intl.DateTimeFormat("en", {
-              dateStyle: "medium",
-              timeStyle: "short",
-            }).format(new Date(outfit.expiresAt))}
-            .
-          </p>
-          <StarRating
-            outfitId={outfit.id}
-            initialValue={outfit.viewerRating}
-            average={outfit.ratingAverage}
-            count={outfit.ratingCount}
-            disabled={!outfit.canRate}
-          />
-          <ShareActions
-            outfitId={outfit.id}
-            shortCode={outfit.shortCode}
-            downloadUrl={outfit.downloadUrl}
-            shareUrl={new URL(
-              `/outfits/${outfit.id}`,
-              getServerEnv().APP_URL,
-            ).toString()}
-          />
-        </RevealAside>
-      </div>
-    </MotionPage>
+          </section>
+        </div>
+      );
+    }
+    if (error instanceof DomainError && error.status === 404) notFound();
+    throw error;
+  }
+  const related = await getRelatedOutfits(outfit.id).catch(() => []);
+  const shareUrl = new URL(
+    `/outfits/${outfit.id}`,
+    getServerEnv().APP_URL,
+  ).toString();
+
+  return (
+    <div className="hall-page look-detail-page" data-look-detail-page>
+      <CustomCursor scope="hall" />
+      <LookDetail outfit={outfit} shareUrl={shareUrl} />
+      <RelatedLooks outfits={related} />
+    </div>
   );
 }

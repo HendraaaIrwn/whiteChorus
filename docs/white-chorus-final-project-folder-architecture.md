@@ -35,7 +35,7 @@
 15. [Guest Session dan Security Boundary](#15-guest-session-dan-security-boundary)
 16. [Rate Limiting dan Abuse Protection](#16-rate-limiting-dan-abuse-protection)
 17. [Hall of Fame dan Ranking](#17-hall-of-fame-dan-ranking)
-18. [Weekly Winner](#18-weekly-winner)
+18. [Daily Winner](#18-daily-winner)
 19. [Music Architecture](#19-music-architecture)
 20. [Testing Architecture](#20-testing-architecture)
 21. [Scripts dan Automation](#21-scripts-dan-automation)
@@ -67,7 +67,7 @@ Tujuannya adalah memastikan bahwa:
 - proses publish, rating, ranking, cleanup, dan image rendering tetap aman di server;
 - dua karakter menggunakan satu sumber konfigurasi asset yang konsisten;
 - project tetap sederhana untuk MVP, tetapi tidak berantakan ketika item bertambah dari 5 menjadi 10 per kategori;
-- fitur Hall of Fame, rating, social sharing, download, dan weekly winner dapat berkembang tanpa memerlukan refactor besar;
+- fitur Hall of Fame, rating, social sharing, download, dan daily winner dapat berkembang tanpa memerlukan refactor besar;
 - tim tidak membuat abstraksi atau service yang belum dibutuhkan.
 
 Dokumen ini bukan panduan microservices. White Chorus menggunakan **satu aplikasi Next.js full-stack**, satu database PostgreSQL, dan satu layanan object storage.
@@ -206,7 +206,7 @@ Aturan berikut tidak boleh ditulis ulang di banyak tempat:
 - satu guest hanya dapat memberi satu rating per outfit;
 - pemilik tidak boleh memberi rating pada outfit sendiri;
 - submission aktif selama tujuh hari;
-- minimum weekly winner adalah lima rating;
+- minimum daily winner adalah lima rating;
 - maksimal publish default adalah 5 per jam dan 15 per hari.
 
 Business rule ditempatkan pada modul domain/use case dan diuji.
@@ -302,7 +302,7 @@ white-chorus/
 │   ├── verify-storage-access.ts
 │   ├── seed-demo-submissions.ts
 │   ├── expire-submissions-manually.ts
-│   └── select-weekly-winner-manually.ts
+│   └── select-daily-winner-manually.ts
 │
 ├── src/
 │   ├── app/
@@ -322,9 +322,9 @@ white-chorus/
 │   │   │   │       ├── loading.tsx
 │   │   │   │       ├── error.tsx
 │   │   │   │       └── not-found.tsx
-│   │   │   └── weekly-winners/
+│   │   │   └── daily-winners/
 │   │   │       ├── page.tsx
-│   │   │       └── [week]/
+│   │   │       └── [day]/
 │   │   │           ├── page.tsx
 │   │   │           └── not-found.tsx
 │   │   │
@@ -342,12 +342,12 @@ white-chorus/
 │   │   │   │       │   └── route.ts
 │   │   │   │       └── download/
 │   │   │   │           └── route.ts
-│   │   │   ├── weekly-winners/
+│   │   │   ├── daily-winners/
 │   │   │   │   └── route.ts
 │   │   │   ├── cron/
 │   │   │   │   ├── expire-outfits/
 │   │   │   │   │   └── route.ts
-│   │   │   │   └── select-weekly-winner/
+│   │   │   │   └── select-daily-winner/
 │   │   │   │       └── route.ts
 │   │   │   ├── internal/
 │   │   │   │   └── outfits/
@@ -502,18 +502,18 @@ white-chorus/
 │   │   │   └── server/
 │   │   │       └── record-share-intent.ts
 │   │   │
-│   │   ├── weekly-winners/
+│   │   ├── daily-winners/
 │   │   │   ├── components/
-│   │   │   │   ├── weekly-winner-card.tsx
-│   │   │   │   └── weekly-winner-list.tsx
+│   │   │   │   ├── daily-winner-card.tsx
+│   │   │   │   └── daily-winner-list.tsx
 │   │   │   ├── server/
 │   │   │   │   ├── calculate-weighted-score.ts
-│   │   │   │   ├── get-week-period.ts
-│   │   │   │   ├── get-weekly-winners.ts
-│   │   │   │   ├── select-weekly-winner.ts
-│   │   │   │   └── weekly-winner.repository.ts
-│   │   │   ├── weekly-winner.errors.ts
-│   │   │   └── weekly-winner.types.ts
+│   │   │   │   ├── get-day-period.ts
+│   │   │   │   ├── get-daily-winners.ts
+│   │   │   │   ├── select-daily-winner.ts
+│   │   │   │   └── daily-winner.repository.ts
+│   │   │   ├── daily-winner.errors.ts
+│   │   │   └── daily-winner.types.ts
 │   │   │
 │   │   └── abuse-protection/
 │   │       ├── server/
@@ -579,12 +579,12 @@ white-chorus/
 │   │   ├── hall-of-fame.spec.ts
 │   │   ├── rating.spec.ts
 │   │   ├── sharing.spec.ts
-│   │   └── weekly-winner.spec.ts
+│   │   └── daily-winner.spec.ts
 │   ├── integration/
 │   │   ├── outfit-publish.integration.test.ts
 │   │   ├── rating.integration.test.ts
 │   │   ├── cleanup.integration.test.ts
-│   │   └── weekly-winner.integration.test.ts
+│   │   └── daily-winner.integration.test.ts
 │   ├── fixtures/
 │   │   ├── dress-up-configurations.ts
 │   │   ├── outfit-records.ts
@@ -710,7 +710,7 @@ Menjelaskan:
 Menjelaskan:
 
 - cara menjalankan cleanup manual;
-- cara memilih weekly winner manual;
+- cara memilih daily winner manual;
 - cara memeriksa `PROCESSING` yang tersangkut;
 - cara menghapus orphan file;
 - cara rollback deployment.
@@ -774,7 +774,7 @@ scripts/
 ├── verify-storage-access.ts
 ├── seed-demo-submissions.ts
 ├── expire-submissions-manually.ts
-└── select-weekly-winner-manually.ts
+└── select-daily-winner-manually.ts
 ```
 
 Jangan membuat script menjadi cara utama aplikasi bekerja. Semua proses penting tetap memiliki use case server yang dapat dipanggil oleh cron maupun script.
@@ -782,13 +782,13 @@ Jangan membuat script menjadi cara utama aplikasi bekerja. Semua proses penting 
 Contoh:
 
 ```text
-scripts/select-weekly-winner-manually.ts
+scripts/select-daily-winner-manually.ts
 ```
 
 memanggil function:
 
 ```text
-src/features/weekly-winners/server/select-weekly-winner.ts
+src/features/daily-winners/server/select-daily-winner.ts
 ```
 
 Bukan menulis ulang algoritmanya.
@@ -908,13 +908,14 @@ Tanggung jawab:
 - menampilkan expired state jika sesuai;
 - menghasilkan metadata dinamis dari `socialImagePath`.
 
-## 6.7 Weekly Winners
+## 6.7 Daily Winners
 
 ```text
-src/app/(site)/weekly-winners/
+src/app/(site)/daily-winners/
 ```
 
-Halaman list dan detail snapshot pemenang.
+Halaman list menampilkan live ranking hari berjalan yang polling setiap 15 detik,
+diikuti snapshot pemenang harian. Halaman detail menampilkan satu snapshot final.
 
 Snapshot tidak bergantung pada file submission reguler yang akan dihapus setelah tujuh hari.
 
@@ -1268,11 +1269,13 @@ Download file tetap dilakukan melalui Route Handler server.
 
 ---
 
-## 7.8 `features/weekly-winners`
+## 7.8 `features/daily-winners`
 
 Mengelola:
 
-- periode mingguan;
+- periode kalender harian `Asia/Jakarta`;
+- live ranking hari berjalan;
+- refresh ranking melalui endpoint read-only;
 - weighted score;
 - eligibility;
 - tie-breaker;
@@ -1280,11 +1283,11 @@ Mengelola:
 - winner list.
 
 ```text
-weekly-winners/
+daily-winners/
 ├── components/
 ├── server/
-├── weekly-winner.errors.ts
-└── weekly-winner.types.ts
+├── daily-winner.errors.ts
+└── daily-winner.types.ts
 ```
 
 Algoritma tidak boleh berada di cron route.
@@ -1292,7 +1295,7 @@ Algoritma tidak boleh berada di cron route.
 Cron route hanya memanggil:
 
 ```text
-select-weekly-winner()
+select-daily-winner()
 ```
 
 ---
@@ -1352,7 +1355,7 @@ Contoh yang tidak boleh:
 ```text
 OutfitCard
 CharacterCanvas
-WeeklyWinnerCard
+DailyWinnerCard
 StarRating
 ```
 
@@ -1451,7 +1454,7 @@ Renderer tidak:
 - membuat database record;
 - membaca guest cookie;
 - memeriksa publish limit;
-- memilih weekly winner.
+- memilih daily winner.
 
 ---
 
@@ -1526,7 +1529,7 @@ Time adalah dependency penting karena:
 
 - submission berumur tujuh hari;
 - publish limit menggunakan window waktu;
-- weekly winner menggunakan Asia/Jakarta;
+- daily winner menggunakan Asia/Jakarta;
 - integration test membutuhkan waktu yang dapat dikendalikan.
 
 ```text
@@ -1611,7 +1614,7 @@ publish per day
 publish cooldown
 rating per hour
 retention days
-weekly minimum rating
+daily minimum rating
 ```
 
 Nilai dapat berasal dari validated environment.
@@ -1772,7 +1775,7 @@ Model minimum:
 Guest
 Outfit
 Rating
-WeeklyWinner
+DailyWinner
 ```
 
 ShareEvent bersifat optional.
@@ -1784,7 +1787,7 @@ Query database berada dekat domain:
 ```text
 features/outfits/server/outfit.repository.ts
 features/ratings/server/rating.repository.ts
-features/weekly-winners/server/weekly-winner.repository.ts
+features/daily-winners/server/daily-winner.repository.ts
 features/guest-session/server/guest-session.repository.ts
 ```
 
@@ -1815,7 +1818,7 @@ change2
 - guest dummy;
 - outfit dummy;
 - rating dummy;
-- weekly winner dummy.
+- daily winner dummy.
 
 Seed tidak mengunggah generated file production.
 
@@ -1834,9 +1837,9 @@ Gunakan placeholder asset lokal atau public fixture.
 | PUT  | `/api/outfits/[id]/rating`        | `app/api/outfits/[id]/rating/route.ts`   | `upsert-rating.ts`        |
 | POST | `/api/outfits/[id]/share`         | `app/api/outfits/[id]/share/route.ts`    | `record-share-intent.ts`  |
 | GET  | `/api/outfits/[id]/download`      | `app/api/outfits/[id]/download/route.ts` | download handler          |
-| GET  | `/api/weekly-winners`             | `app/api/weekly-winners/route.ts`        | `get-weekly-winners.ts`   |
+| GET  | `/api/daily-winners`              | `app/api/daily-winners/route.ts`         | `get-daily-winners.ts`    |
 | POST | `/api/cron/expire-outfits`        | cron route                               | `expire-outfits.ts`       |
-| POST | `/api/cron/select-weekly-winner`  | cron route                               | `select-weekly-winner.ts` |
+| POST | `/api/cron/select-daily-winner`   | cron route                               | `select-daily-winner.ts`  |
 | POST | `/api/internal/outfits/[id]/hide` | internal route                           | `hide-outfit.ts`          |
 | GET  | `/api/health`                     | health route                             | health checks             |
 
@@ -2116,21 +2119,21 @@ ratingAverage
 ratingCount
 publishedAt
 expiresAt
-weeklyRank optional
+dailyRank optional
 ```
 
 Jangan mengambil seluruh JSON configuration untuk Hall of Fame card.
 
 ---
 
-## 18. Weekly Winner
+## 18. Daily Winner
 
 ## 18.1 Period calculation
 
 Semua logic periode berada di:
 
 ```text
-get-week-period.ts
+get-day-period.ts
 ```
 
 Timezone default:
@@ -2138,6 +2141,9 @@ Timezone default:
 ```text
 Asia/Jakarta
 ```
+
+Periode mengikuti kalender harian `00:00:00` sampai sebelum `00:00:00` hari
+berikutnya. Cron finalisasi berjalan pukul `00:05 Asia/Jakarta`.
 
 ## 18.2 Weighted score
 
@@ -2151,7 +2157,7 @@ Agar mudah diuji dengan fixture.
 
 ## 18.3 Winner selection
 
-`select-weekly-winner.ts`:
+`select-daily-winner.ts`:
 
 1. menghitung period;
 2. memastikan snapshot belum ada;
@@ -2159,7 +2165,7 @@ Agar mudah diuji dengan fixture.
 4. menghitung ranking;
 5. menerapkan tie-breaker;
 6. menyalin/snapshot image;
-7. membuat record WeeklyWinner;
+7. membuat record DailyWinner;
 8. mengembalikan summary.
 
 ## 18.4 Idempotency
@@ -2167,7 +2173,7 @@ Agar mudah diuji dengan fixture.
 Constraint:
 
 ```text
-UNIQUE(weekStart, weekEnd)
+UNIQUE(dayStart, dayEnd)
 ```
 
 Cron yang dipanggil dua kali tidak boleh membuat dua pemenang.
@@ -2234,7 +2240,7 @@ Unit test sebaiknya colocated dekat source dengan nama:
 Contoh:
 
 ```text
-features/weekly-winners/server/calculate-weighted-score.test.ts
+features/daily-winners/server/calculate-weighted-score.test.ts
 features/dress-up/model/normalize-configuration.test.ts
 ```
 
@@ -2349,8 +2355,8 @@ DUPLICATE_WINDOW_HOURS=24
 RATING_LIMIT_PER_HOUR=30
 SUBMISSION_RETENTION_DAYS=7
 GUEST_RETENTION_DAYS=14
-WEEKLY_TIMEZONE=Asia/Jakarta
-WEEKLY_MIN_RATINGS=5
+DAILY_TIMEZONE=Asia/Jakarta
+DAILY_MIN_RATINGS=5
 
 MUSIC_DEFAULT_VOLUME=0.35
 
@@ -2466,7 +2472,7 @@ Contoh:
 
 ```text
 publish-outfit.ts
-weekly-winner-card.tsx
+daily-winner-card.tsx
 guest-session.repository.ts
 ```
 
@@ -2497,7 +2503,7 @@ publishOutfit
 getOutfitDetail
 upsertRating
 expireOutfits
-selectWeeklyWinner
+selectDailyWinner
 ```
 
 Hindari:
@@ -2684,8 +2690,8 @@ duration
 Winner summary:
 
 ```text
-weekStart
-weekEnd
+dayStart
+dayEnd
 eligibleCount
 winnerId
 winnerScore
@@ -2765,7 +2771,7 @@ Contoh:
 | Hall pagination/sort  | `features/hall-of-fame`                        |
 | Rating UI/use case    | `features/ratings`                             |
 | Sharing UI            | `features/sharing`                             |
-| Weekly score/winner   | `features/weekly-winners`                      |
+| Daily score/winner    | `features/daily-winners`                       |
 | Rate limit policy     | `features/abuse-protection`                    |
 | Security primitive    | `server/security`                              |
 | Environment config    | `config/env.ts`                                |
@@ -2914,7 +2920,7 @@ Saat social layer dibuat:
 src/features/hall-of-fame
 src/features/ratings
 src/features/sharing
-src/features/weekly-winners
+src/features/daily-winners
 ```
 
 ### Tahap 4
@@ -3034,14 +3040,14 @@ Operasi internal awal dapat dilakukan melalui:
 - [ ] Unique constraint aktif.
 - [ ] Self-rating diblokir.
 - [ ] Aggregate konsisten.
-- [ ] Weekly score diuji.
+- [ ] Daily score diuji.
 
 ### Retention
 
 - [ ] `expiresAt = publishedAt + 7 hari`.
 - [ ] Cleanup menghapus database dan Storage.
 - [ ] Cron idempotent.
-- [ ] Weekly winner memiliki snapshot sendiri.
+- [ ] Daily winner memiliki snapshot sendiri.
 - [ ] Stuck `PROCESSING` ditangani.
 
 ### Security
@@ -3060,7 +3066,7 @@ Operasi internal awal dapat dilakukan melalui:
 - [ ] Publish integration test.
 - [ ] Rating constraint integration test.
 - [ ] Cleanup integration test.
-- [ ] Weekly winner idempotency test.
+- [ ] Daily winner idempotency test.
 - [ ] E2E desktop dan mobile.
 
 ---

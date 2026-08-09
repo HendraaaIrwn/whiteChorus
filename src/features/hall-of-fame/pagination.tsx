@@ -1,31 +1,53 @@
+"use client";
+
 import Link from "next/link";
+
+export function getHallPaginationHref(sort: string, page: number) {
+  return `/hall-of-fame?sort=${sort}&page=${page}`;
+}
 
 export function Pagination({
   page,
   totalPages,
   sort,
+  onNavigate,
 }: {
   page: number;
   totalPages: number;
   sort: string;
+  onNavigate?: () => void;
 }) {
   if (totalPages <= 1) return null;
   return (
     <nav className="pagination" aria-label="Hall of Fame pages">
       {page <= 1 ? (
-        <span aria-disabled="true">PREVIOUS</span>
+        <span aria-disabled="true">← PREVIOUS</span>
       ) : (
-        <Link href={`/hall-of-fame?sort=${sort}&page=${page - 1}`}>
-          PREVIOUS
+        <Link
+          href={getHallPaginationHref(sort, page - 1)}
+          prefetch={false}
+          scroll={false}
+          data-cursor="OPEN"
+          onClick={onNavigate}
+        >
+          <span aria-hidden="true">←</span> PREVIOUS
         </Link>
       )}
       <span>
-        {page} OF {totalPages}
+        {String(page).padStart(2, "0")} OF {String(totalPages).padStart(2, "0")}
       </span>
       {page >= totalPages ? (
-        <span aria-disabled="true">NEXT</span>
+        <span aria-disabled="true">NEXT →</span>
       ) : (
-        <Link href={`/hall-of-fame?sort=${sort}&page=${page + 1}`}>NEXT</Link>
+        <Link
+          href={getHallPaginationHref(sort, page + 1)}
+          prefetch={false}
+          scroll={false}
+          data-cursor="OPEN"
+          onClick={onNavigate}
+        >
+          NEXT <span aria-hidden="true">→</span>
+        </Link>
       )}
     </nav>
   );

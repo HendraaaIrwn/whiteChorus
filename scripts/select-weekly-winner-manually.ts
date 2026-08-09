@@ -1,4 +1,4 @@
-import { selectWeeklyWinner } from "../src/features/weekly-winners/weekly-winners";
+import { selectDailyWinner } from "../src/features/daily-winners/daily-winners";
 import { getPrisma } from "../src/server/database/prisma";
 
 async function main() {
@@ -9,7 +9,7 @@ async function main() {
       "Pass an ISO timestamp, for example 2026-08-10T00:05:00+07:00",
     );
   try {
-    console.log(await selectWeeklyWinner(now));
+    console.log(await selectDailyWinner(now));
   } finally {
     await getPrisma().$disconnect();
   }

@@ -35,7 +35,7 @@ export const serverEnvSchema = z
     GUEST_RETENTION_DAYS: z.coerce.number().int().positive().default(14),
     STUCK_PROCESSING_MINUTES: z.coerce.number().int().positive().default(15),
     FAILED_OUTFIT_RETENTION_DAYS: z.coerce.number().int().positive().default(2),
-    WEEKLY_TIMEZONE: z
+    DAILY_TIMEZONE: z
       .string()
       .refine((value) => {
         try {
@@ -44,10 +44,10 @@ export const serverEnvSchema = z
         } catch {
           return false;
         }
-      }, "WEEKLY_TIMEZONE must be a valid IANA time zone")
+      }, "DAILY_TIMEZONE must be a valid IANA time zone")
       .default("Asia/Jakarta"),
-    WEEKLY_MIN_RATINGS: z.coerce.number().int().positive().default(5),
-    WEEKLY_WINNER_ENABLED: z.enum(["true", "false"]).default("true"),
+    DAILY_MIN_RATINGS: z.coerce.number().int().positive().default(5),
+    DAILY_WINNER_ENABLED: z.enum(["true", "false"]).default("true"),
     NEXT_PUBLIC_ASSET_MODE: z
       .enum(["fixture", "production"])
       .default("fixture"),

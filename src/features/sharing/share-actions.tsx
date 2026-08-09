@@ -13,11 +13,13 @@ export function ShareActions({
   shortCode,
   downloadUrl,
   shareUrl,
+  primaryAction = "share",
 }: {
   outfitId: string;
   shortCode: string;
   downloadUrl: string;
   shareUrl: string;
+  primaryAction?: "share" | "download";
 }) {
   const reduceMotion = useHydratedReducedMotion();
   const [message, setMessage] = useState("");
@@ -54,9 +56,15 @@ export function ShareActions({
     }
   }
   async function copy() {
-    await navigator.clipboard.writeText(shareUrl);
-    await record("copy-link");
-    setMessage("Link copied.");
+    try {
+      if (!navigator.clipboard)
+        throw new Error("Clipboard access is unavailable.");
+      await navigator.clipboard.writeText(shareUrl);
+      await record("copy-link");
+      setMessage("Link copied.");
+    } catch {
+      setMessage("Copy failed. Select the address from your browser instead.");
+    }
   }
   async function download() {
     try {
@@ -93,30 +101,63 @@ export function ShareActions({
   ] as const;
 
   return (
-    <div className="share-actions">
-      <Button variant="secondary" onClick={() => void share()}>
+    <div className="share-actions" data-primary-action={primaryAction}>
+      {primaryAction === "download" ? (
+        <Button
+          className="share-actions__download"
+          onClick={() => void download()}
+          data-cursor="OPEN"
+        >
+          <Download aria-hidden="true" /> DOWNLOAD IMAGE
+        </Button>
+      ) : null}
+      <Button
+        className="share-actions__share"
+        variant="secondary"
+        onClick={() => void share()}
+        data-cursor="SHARE"
+      >
         <Share2 aria-hidden="true" /> SHARE OUTFIT
       </Button>
-      <Button variant="tertiary" onClick={() => void copy()}>
-        <Copy aria-hidden="true" /> COPY LINK
-      </Button>
-      <div className="share-platforms">
-        {platforms.map(([label, channel, href]) => (
-          <a
-            key={channel}
-            className="button button--tertiary button--md"
-            href={href}
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => void record(channel)}
+      {primaryAction === "share" ? (
+        <Button
+          className="share-actions__download"
+          variant="tertiary"
+          onClick={() => void download()}
+          data-cursor="OPEN"
+        >
+          <Download aria-hidden="true" /> DOWNLOAD IMAGE
+        </Button>
+      ) : null}
+      <details className="share-disclosure">
+        <summary data-cursor="SHARE">
+          MORE WAYS TO SHARE <span aria-hidden="true">+</span>
+        </summary>
+        <div className="share-disclosure__content">
+          <Button
+            variant="tertiary"
+            onClick={() => void copy()}
+            data-cursor="SHARE"
           >
-            {label}
-          </a>
-        ))}
-      </div>
-      <Button variant="tertiary" onClick={() => void download()}>
-        <Download aria-hidden="true" /> DOWNLOAD IMAGE
-      </Button>
+            <Copy aria-hidden="true" /> COPY LINK
+          </Button>
+          <div className="share-platforms">
+            {platforms.map(([label, channel, href]) => (
+              <a
+                key={channel}
+                className="button button--tertiary button--md"
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                data-cursor="SHARE"
+                onClick={() => void record(channel)}
+              >
+                {label}
+              </a>
+            ))}
+          </div>
+        </div>
+      </details>
       <div className="share-feedback" aria-live="polite" aria-atomic="true">
         <AnimatePresence initial={false} mode="wait">
           {message ? (

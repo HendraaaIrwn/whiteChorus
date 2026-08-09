@@ -16,24 +16,12 @@ importers:
       "@prisma/client":
         specifier: ^7.9.1
         version: 7.9.1(prisma@7.9.1(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(typescript@5.9.3)
-      "@react-spring/web":
-        specifier: 10.1.2
-        version: 10.1.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      "@rive-app/react-webgl2":
-        specifier: 4.30.0
-        version: 4.30.0(react@19.2.4)
       "@supabase/supabase-js":
         specifier: ^2.111.0
         version: 2.111.0
-      animejs:
-        specifier: 4.5.0
-        version: 4.5.0
       framer-motion:
         specifier: 12.43.0
         version: 12.43.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      gsap:
-        specifier: 3.15.0
-        version: 3.15.0
       lucide-react:
         specifier: ^1.28.0
         version: 1.28.0(react@19.2.4)
@@ -1567,65 +1555,6 @@ packages:
       "@types/react":
         optional: true
 
-  "@react-spring/animated@10.1.2":
-    resolution:
-      {
-        integrity: sha512-yAsQ/bbp6+vko7WNCI1M00c6KLE9XKTGCrgRhQqS4JcK3oF5qBV4rHYrQEprvEvYXxt+1H5FsLS2eVValEPfFw==,
-      }
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
-  "@react-spring/core@10.1.2":
-    resolution:
-      {
-        integrity: sha512-lPGOAg0V+PV3ucopOajD+YCxoe8twALqAeG4c/+sqVjBsyUNNdx8qfz/DcNSPKA8PV3+AyQELlCxlDfap9cmBQ==,
-      }
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
-  "@react-spring/rafz@10.1.2":
-    resolution:
-      {
-        integrity: sha512-KC6vSFZyPnRJ2rXqipV9QqR4SaYbYXjvKfdYKWipNK2mWuV79gr20WmpVUOsTiEHGRY3WSOdWCHN+P9Pdaqb7Q==,
-      }
-
-  "@react-spring/shared@10.1.2":
-    resolution:
-      {
-        integrity: sha512-47/8bNQ/o0uEmxEnPBuERlC29VSqiTn5P9ln9tUMSVkYKYxBtouYE686F5kAGj+eHRPoNCw7drxWE9nv2d1LMw==,
-      }
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
-  "@react-spring/types@10.1.2":
-    resolution:
-      {
-        integrity: sha512-G4CWowmVPz+rDG1y9QRVq/prZNxiNwQaHC0kgT/MgY6jAGgdRgTV4VThpvJDwWvUitk3xZB4soP4d36fjeQ09g==,
-      }
-
-  "@react-spring/web@10.1.2":
-    resolution:
-      {
-        integrity: sha512-KxDB3zaDqy9qFsu7fdxjyraAxweHH4k5TW5WGT/OuMK6hKaxSDfhrQfRBzfFaSVvMBf+NghbJFanllV4ia6i7A==,
-      }
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
-  "@rive-app/react-webgl2@4.30.0":
-    resolution:
-      {
-        integrity: sha512-PLhK9fzyJhYz1XEGT/C7u72P+Jwds89brCdBalMIOepQgBKs3WGqBqPP4o7/a0c6XxiV8Cxdy0UO1yOs7bp1XA==,
-      }
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0
-
-  "@rive-app/webgl2@2.39.1":
-    resolution:
-      {
-        integrity: sha512-T/d2yieiQIStRatwB1G7G58tXTsXyeK91g2AhaPIGvi6SpdvQAJx7s6+ir42L4kiiTY5HeIBRXI+xueU+xzA3Q==,
-      }
-
   "@rolldown/binding-android-arm64@1.2.1":
     resolution:
       {
@@ -2528,20 +2457,6 @@ packages:
       {
         integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==,
       }
-
-  animejs@4.5.0:
-    resolution:
-      {
-        integrity: sha512-NQimYX+lz8WaXonGS9zVVoviCIAjONeJayxacUditaivYLqyXgGjFKjuyl0aUUhFKm5MriX9ty1TGovNzoJQWA==,
-      }
-    peerDependencies:
-      "@types/three": ">=0.150.0"
-      three: ">=0.150.0"
-    peerDependenciesMeta:
-      "@types/three":
-        optional: true
-      three:
-        optional: true
 
   ansi-styles@4.3.0:
     resolution:
@@ -3713,12 +3628,6 @@ packages:
     resolution:
       {
         integrity: sha512-5ykVn/EXM1hF0XCaWh05VbYvEiOL2lY1kBxZtaYsyvjp7cmWOU1XsAdfQBwClraEofXDT197lFbXOEVMHpvQOg==,
-      }
-
-  gsap@3.15.0:
-    resolution:
-      {
-        integrity: sha512-dMW4CWBTUK1AEEDeZc1g4xpPGIrSf9fJF960qbTZmN/QwZIWY5wgliS6JWl9/25fpTGJrMRtSjGtOmPnfjZB+A==,
       }
 
   has-bigints@1.1.0:
@@ -6695,46 +6604,6 @@ snapshots:
     optionalDependencies:
       "@types/react": 19.2.18
 
-  "@react-spring/animated@10.1.2(react@19.2.4)":
-    dependencies:
-      "@react-spring/shared": 10.1.2(react@19.2.4)
-      "@react-spring/types": 10.1.2
-      react: 19.2.4
-
-  "@react-spring/core@10.1.2(react@19.2.4)":
-    dependencies:
-      "@react-spring/animated": 10.1.2(react@19.2.4)
-      "@react-spring/shared": 10.1.2(react@19.2.4)
-      "@react-spring/types": 10.1.2
-      react: 19.2.4
-
-  "@react-spring/rafz@10.1.2": {}
-
-  "@react-spring/shared@10.1.2(react@19.2.4)":
-    dependencies:
-      "@react-spring/rafz": 10.1.2
-      "@react-spring/types": 10.1.2
-      react: 19.2.4
-
-  "@react-spring/types@10.1.2": {}
-
-  "@react-spring/web@10.1.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)":
-    dependencies:
-      "@react-spring/animated": 10.1.2(react@19.2.4)
-      "@react-spring/core": 10.1.2(react@19.2.4)
-      "@react-spring/shared": 10.1.2(react@19.2.4)
-      "@react-spring/types": 10.1.2
-      csstype: 3.2.3
-      react: 19.2.4
-      react-dom: 19.2.4(react@19.2.4)
-
-  "@rive-app/react-webgl2@4.30.0(react@19.2.4)":
-    dependencies:
-      "@rive-app/webgl2": 2.39.1
-      react: 19.2.4
-
-  "@rive-app/webgl2@2.39.1": {}
-
   "@rolldown/binding-android-arm64@1.2.1":
     optional: true
 
@@ -7263,8 +7132,6 @@ snapshots:
       fast-uri: 3.1.5
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
-
-  animejs@4.5.0: {}
 
   ansi-styles@4.3.0:
     dependencies:
@@ -8139,8 +8006,6 @@ snapshots:
   grammex@3.1.13: {}
 
   graphmatch@1.1.1: {}
-
-  gsap@3.15.0: {}
 
   has-bigints@1.1.0: {}
 

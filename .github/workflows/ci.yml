@@ -31,6 +31,7 @@ jobs:
       CRON_SECRET: ci-cron-secret-at-least-thirty-two-characters
       INTERNAL_ADMIN_SECRET: ci-admin-secret-at-least-thirty-two-characters
       TURNSTILE_MODE: off
+      NEXT_PUBLIC_ASSET_MODE: fixture
       RUN_DATABASE_TESTS: "1"
     steps:
       - uses: actions/checkout@v4
@@ -41,12 +42,20 @@ jobs:
       - run: pnpm prisma:generate
       - run: pnpm env:validate
       - run: pnpm prisma:validate
+      - name: Assert migration target starts empty
+        run: pnpm db:assert-empty
       - run: pnpm prisma:deploy
+      - name: Generate fixture dress-up assets
+        if: env.NEXT_PUBLIC_ASSET_MODE == 'fixture'
+        run: pnpm assets:generate:fixture
       - run: pnpm assets:validate
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
-      - run: pnpm test
+      - name: Run unit tests
+        run: RUN_DATABASE_TESTS=0 pnpm test
+      - name: Run PostgreSQL integration tests
+        run: pnpm test:postgres
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium firefox webkit
       - run: pnpm test:e2e
