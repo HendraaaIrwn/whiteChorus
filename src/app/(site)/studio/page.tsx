@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 
-import {
-  MotionPage,
-  RevealHeader,
-} from "@/components/motion/motion-primitives";
 import { DressUpStudio } from "@/features/dress-up/dress-up-studio";
+import { ThreadStroke } from "@/features/home/home-doodles";
+import { CustomCursor, MaskedHeading } from "@/features/home/home-motion";
 
 export const metadata: Metadata = {
   title: "Studio",
@@ -13,16 +11,26 @@ export const metadata: Metadata = {
 
 export default function StudioPage() {
   return (
-    <MotionPage className="page studio-page">
-      <RevealHeader className="page-heading" inView={false}>
-        <p className="eyebrow">Your stage, your chorus</p>
-        <h1>STYLE EMIR &amp; FRISKA</h1>
-        <p>
-          Both characters share one scene. Switch between them and build a look
-          worth spotlighting.
-        </p>
-      </RevealHeader>
-      <DressUpStudio />
-    </MotionPage>
+    <div className="studio-page" data-studio-page>
+      <CustomCursor scope="studio" />
+      <section className="studio-workspace" aria-labelledby="studio-page-title">
+        <header className="studio-heading">
+          <span className="studio-kicker">YOUR STAGE · TWO VOICES</span>
+          <MaskedHeading
+            id="studio-page-title"
+            className="studio-heading__title"
+            level="h1"
+            lines={["STYLE EMIR", "& FRISKA"]}
+            intro
+          />
+          <p>
+            Both characters share one scene. Choose a voice, then dress the
+            chorus one layer at a time.
+          </p>
+          <ThreadStroke aria-hidden="true" />
+        </header>
+        <DressUpStudio />
+      </section>
+    </div>
   );
 }

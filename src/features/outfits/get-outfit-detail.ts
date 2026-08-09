@@ -1,6 +1,7 @@
 import "server-only";
 
 import { publicConfig } from "@/config/public-config";
+import { getDailyWinnerSourceIds } from "@/features/daily-winners/daily-winner-lookup";
 import { getPrisma } from "@/server/database/prisma";
 import { DomainError } from "@/server/http/domain-error";
 import { getGeneratedAssetStorage } from "@/server/storage/generated-asset-storage";
@@ -45,6 +46,8 @@ export async function getOutfitDetail(
   }
   const storage = getGeneratedAssetStorage();
   const productionMode = publicConfig.assetMode === "production";
+  const dailyWinnerIds = await getDailyWinnerSourceIds([outfit.id]);
+  const isOwner = Boolean(viewerGuestId && viewerGuestId === outfit.guestId);
   const viewerRating = viewerGuestId
     ? await getPrisma().rating.findUnique({
         where: {
@@ -72,7 +75,9 @@ export async function getOutfitDetail(
       0,
       Math.ceil((outfit.expiresAt.getTime() - Date.now()) / 86_400_000),
     ),
-    canRate: !viewerGuestId || viewerGuestId !== outfit.guestId,
+    isDailyWinner: dailyWinnerIds.has(outfit.id),
+    isOwner,
+    canRate: !isOwner,
     viewerRating: viewerRating?.value ?? null,
   };
 }

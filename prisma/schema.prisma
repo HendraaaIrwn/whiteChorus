@@ -89,7 +89,7 @@ model Outfit {
   guest        Guest               @relation(fields: [guestId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "outfits_guest_id_fkey")
   ratings      Rating[]
   interactions OutfitInteraction[]
-  weeklyWinner WeeklyWinner?
+  dailyWinner DailyWinner?
 
   @@index([status, expiresAt], map: "outfits_status_expires_at_idx")
   @@index([status, publishedAt(sort: Desc)], map: "outfits_status_published_at_idx")
@@ -132,12 +132,12 @@ model OutfitInteraction {
   @@map("outfit_interactions")
 }
 
-model WeeklyWinner {
+model DailyWinner {
   id                 String   @id @default(uuid()) @db.Uuid
-  sourceOutfitId     String?  @unique(map: "weekly_winners_source_outfit_id_key") @map("source_outfit_id") @db.Uuid
-  weekKey            String   @unique(map: "weekly_winners_week_key_key") @map("week_key") @db.Char(10)
-  weekStart          DateTime @map("week_start") @db.Timestamptz(3)
-  weekEnd            DateTime @map("week_end") @db.Timestamptz(3)
+  sourceOutfitId     String?  @unique(map: "daily_winners_source_outfit_id_key") @map("source_outfit_id") @db.Uuid
+  dayKey             String   @unique(map: "daily_winners_day_key_key") @map("day_key") @db.Char(10)
+  dayStart           DateTime @map("day_start") @db.Timestamptz(3)
+  dayEnd             DateTime @map("day_end") @db.Timestamptz(3)
   shortCode          String   @map("short_code") @db.VarChar(12)
   winnerImagePath    String   @map("winner_image_path") @db.VarChar(512)
   socialImagePath    String?  @map("social_image_path") @db.VarChar(512)
@@ -146,11 +146,11 @@ model WeeklyWinner {
   finalWeightedScore Decimal  @map("final_weighted_score") @db.Decimal(6, 4)
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  sourceOutfit Outfit? @relation(fields: [sourceOutfitId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "weekly_winners_source_outfit_id_fkey")
+  sourceOutfit Outfit? @relation(fields: [sourceOutfitId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "daily_winners_source_outfit_id_fkey")
 
-  @@unique([weekStart, weekEnd], map: "weekly_winners_week_period_key")
-  @@index([weekStart(sort: Desc)], map: "weekly_winners_week_start_idx")
-  @@map("weekly_winners")
+  @@unique([dayStart, dayEnd], map: "daily_winners_day_period_key")
+  @@index([dayStart(sort: Desc)], map: "daily_winners_day_start_idx")
+  @@map("daily_winners")
 }
 
 model RateLimitCounter {

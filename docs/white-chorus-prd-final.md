@@ -9,7 +9,7 @@
 **User model:** Anonymous guest, no registration or login  
 **Target MVP delivery:** 7 calendar days  
 **Submission lifetime:** 7 days from publication  
-**Core experience:** Dress two characters, publish the final look, enter the Hall of Fame, receive star ratings, win a weekly competition, download the final image, and share it on social media.
+**Core experience:** Dress two characters, publish the final look, enter the Hall of Fame, receive star ratings, win a daily competition, download the final image, and share it on social media.
 
 ---
 
@@ -27,7 +27,7 @@
 10. [Information Architecture](#10-information-architecture)
 11. [Primary User Journeys](#11-primary-user-journeys)
 12. [Functional Requirements](#12-functional-requirements)
-13. [Hall of Fame and Weekly Competition](#13-hall-of-fame-and-weekly-competition)
+13. [Hall of Fame and Daily Competition](#13-hall-of-fame-and-daily-competition)
 14. [Rating System](#14-rating-system)
 15. [Social Sharing and Download](#15-social-sharing-and-download)
 16. [Music and Audio Experience](#16-music-and-audio-experience)
@@ -66,7 +66,7 @@ The document describes:
 - how users interact with it;
 - which features are required for launch;
 - how anonymous guest identity works;
-- how submissions, ratings, weekly winners, downloads, and social sharing work;
+- how submissions, ratings, daily winners, downloads, and social sharing work;
 - how the system prevents abuse without creating unnecessary complexity;
 - which technical stack will be used;
 - what qualifies the MVP as complete.
@@ -90,11 +90,11 @@ The Hall of Fame supports:
 - Newest;
 - Top Rated;
 - Trending;
-- Weekly Winners;
+- Daily Winners;
 - pagination with nine cards per page;
 - a public detail page for each active submission.
 
-Each week, White Chorus selects a winner using a weighted rating score that considers both average stars and rating volume. A winner snapshot is stored separately so that weekly winners remain visible even after the original seven-day submission expires.
+Each day, White Chorus selects a winner using a weighted rating score that considers both average stars and rating volume. A winner snapshot is stored separately so that daily winners remain visible even after the original seven-day submission expires.
 
 Users can:
 
@@ -161,7 +161,7 @@ The product therefore needs proportionate security controls while preserving a f
 
 ## 4. Product Vision
 
-> White Chorus is a playful, polished, and shareable dress-up experience where anyone can create a coordinated two-character look, enter the Hall of Fame, receive community ratings, and compete for a weekly spotlight without creating an account.
+> White Chorus is a playful, polished, and shareable dress-up experience where anyone can create a coordinated two-character look, enter the Hall of Fame, receive community ratings, and compete for a daily spotlight without creating an account.
 
 ---
 
@@ -177,7 +177,7 @@ The product therefore needs proportionate security controls while preserving a f
 6. Generate a final downloadable image for every published submission.
 7. Display published submissions in a paginated Hall of Fame.
 8. Allow anonymous guests to rate active submissions from one to five stars.
-9. Create a fairer weekly competition than raw average rating alone.
+9. Create a fairer daily competition than raw average rating alone.
 10. Provide a unique shareable URL and social preview for every submission.
 11. Keep each regular submission active for exactly seven days.
 12. Automatically delete expired records and generated files.
@@ -294,7 +294,7 @@ Every published look must have a stable thumbnail, final download image, and soc
 - clear rating summaries;
 - sorting;
 - active submission detail pages;
-- weekly winners.
+- daily winners.
 
 ### 7.4 Social sharer
 
@@ -352,7 +352,7 @@ A custom moderation dashboard is not required for the first MVP. Manual interven
 | Hall of Fame page size      | 9 cards                                                              |
 | Download                    | Final image can be downloaded                                        |
 | Sharing                     | Public URL, native share, copy link, common social options           |
-| Weekly competition          | Included                                                             |
+| Daily competition           | Included                                                             |
 | Submission identity         | Anonymous                                                            |
 | Regular submission lifetime | 7 days from publication                                              |
 | Music                       | MP3, loops while site remains open, mute/unmute available            |
@@ -417,8 +417,8 @@ For the MVP, White Chorus will provide **five backgrounds in total**, expandable
 - One rating per guest per outfit.
 - Rating update.
 - Self-rating prevention.
-- Weekly winner selection.
-- Weekly winner archive/snapshot.
+- Daily winner selection.
+- Daily winner archive/snapshot.
 - Public unique URL.
 - Native share.
 - Copy link.
@@ -435,7 +435,7 @@ For the MVP, White Chorus will provide **five backgrounds in total**, expandable
 - Individual reset for Character A and Character B.
 - Individual randomize for Character A and Character B.
 - Related looks on detail pages.
-- Weekly leaderboard before the week closes.
+- Daily leaderboard before the day closes.
 - Manual hide action for operators.
 - Share and download analytics.
 - Lightweight page transitions.
@@ -513,11 +513,11 @@ For the MVP, White Chorus will provide **five backgrounds in total**, expandable
 ├── Expiration status
 └── Related looks, optional
 
-/weekly-winners
-├── Current weekly leaderboard, optional
-└── Previous weekly winner snapshots
+/daily-winners
+├── Live ranking for the current day, refreshed every 15 seconds
+└── Previous daily winner snapshots
 
-/weekly-winners/[week]
+/daily-winners/[day]
 └── Winner image and final statistics
 ```
 
@@ -531,7 +531,7 @@ For the MVP, White Chorus will provide **five backgrounds in total**, expandable
 /api/outfits/[id]/share
 /api/outfits/[id]/download
 /api/cron/expire-outfits
-/api/cron/select-weekly-winner
+/api/cron/select-daily-winner
 /api/internal/outfits/[id]/hide
 ```
 
@@ -654,12 +654,12 @@ Share:
 Shared URL displays the generated social preview
 ```
 
-### 11.7 Weekly winner selection
+### 11.7 Daily winner selection
 
 ```text
-Weekly competition closes
+Daily competition closes
         ↓
-Cron calculates eligible scores
+Cron runs at 00:05 Asia/Jakarta and calculates eligible scores
         ↓
 Highest weighted score wins
         ↓
@@ -667,7 +667,7 @@ Tie-breakers are applied
         ↓
 Winner snapshot is created
         ↓
-Winner is shown in Weekly Winners
+Winner is shown in Daily Winners
         ↓
 Original submission still follows its normal 7-day expiration
 ```
@@ -686,7 +686,7 @@ The landing page must communicate within the first viewport that users can:
 - publish the result;
 - enter the Hall of Fame;
 - receive ratings;
-- compete for a weekly winner position.
+- compete for a daily winner position.
 
 ### FR-LP-002 — Primary actions
 
@@ -1036,7 +1036,7 @@ The detail page displays:
 - copy link;
 - download image;
 - time remaining or expiry date;
-- weekly badge if applicable.
+- daily badge if applicable.
 
 ### FR-SD-003 — Anonymous identity
 
@@ -1110,7 +1110,7 @@ Each card displays:
 - average stars;
 - rating count;
 - publication recency or time remaining;
-- weekly rank badge where relevant;
+- daily rank badge where relevant;
 - quick share action, optional.
 
 ### FR-HF-006 — Active-only query
@@ -1315,7 +1315,7 @@ A lightweight share event may be recorded when a user selects a share action. Wh
 
 ---
 
-## 13. Hall of Fame and Weekly Competition
+## 13. Hall of Fame and Daily Competition
 
 ## 13.1 Newest
 
@@ -1380,7 +1380,7 @@ Trending Score =
 
 Exact weights are configurable and may be tuned after observing real traffic.
 
-## 13.4 Weekly period
+## 13.4 Daily period
 
 Default operational timezone:
 
@@ -1388,31 +1388,31 @@ Default operational timezone:
 Asia/Jakarta
 ```
 
-Default weekly period:
+Default daily period:
 
 ```text
-Monday 00:00:00
+Every calendar day 00:00:00
 through
-Sunday 23:59:59
+23:59:59 Asia/Jakarta
 ```
 
 The timezone and schedule must be configurable.
 
-## 13.5 Weekly eligibility
+## 13.5 Daily eligibility
 
 A submission is eligible when:
 
-- it was published during the weekly period;
+- it was published during the daily period;
 - it remains valid and not hidden at winner calculation time;
 - it has at least five ratings;
 - its creator did not rate it;
 - no suspicious abuse flag disqualifies it.
 
-For the MVP, a late submission receives less exposure than an early submission. This trade-off is accepted to keep the weekly system simple.
+For the MVP, a late submission receives less exposure than an early submission. This trade-off is accepted to keep the daily system simple.
 
 ## 13.6 Winner calculation
 
-At the end of the weekly period:
+At the end of the daily period:
 
 1. calculate final weighted score;
 2. rank eligible submissions;
@@ -1436,11 +1436,11 @@ The recommended MVP behavior is **no official winner** unless the minimum is met
 
 ## 13.8 Winner snapshot
 
-A weekly winner snapshot contains:
+A daily winner snapshot contains:
 
 - winner image path;
-- week start;
-- week end;
+- day start;
+- day end;
 - final weighted score;
 - final average;
 - final rating count;
@@ -1453,15 +1453,17 @@ The winner snapshot is separate from the regular submission.
 
 Regular submissions expire after seven days.
 
-Weekly winner snapshots are retained for the duration of the White Chorus campaign or until an operator archives them. They contain no personal identity.
+Daily winner snapshots are retained for the duration of the White Chorus campaign or until an operator archives them. They contain no personal identity.
 
-## 13.10 Weekly Winners page
+## 13.10 Daily Winners page
 
 The page displays:
 
+- live rank, weighted score, rating count, and eligibility for today;
+- automatic refresh every 15 seconds and when the tab becomes visible;
 - current or latest winner;
 - previous winner snapshots;
-- week label;
+- day label;
 - final stars;
 - final rating count;
 - final image;
@@ -1726,7 +1728,7 @@ Rate This Look
 Newest
 Top Rated
 Trending
-Weekly Winners
+Daily Winners
 ```
 
 ---
@@ -1922,14 +1924,14 @@ Recommended indexes:
 (guestId, createdAt)
 ```
 
-## 19.5 WeeklyWinner
+## 19.5 DailyWinner
 
 | Field              | Type            | Requirement                                  |
 | ------------------ | --------------- | -------------------------------------------- |
 | id                 | UUID            | Primary key                                  |
 | sourceOutfitId     | UUID nullable   | May remain after source deletion as nullable |
-| weekStart          | DateTime        | Competition period                           |
-| weekEnd            | DateTime        | Competition period                           |
+| dayStart           | DateTime        | Competition period                           |
+| dayEnd             | DateTime        | Competition period                           |
 | shortCode          | String          | Winner display code                          |
 | winnerImagePath    | String          | Persistent snapshot                          |
 | socialImagePath    | String nullable | Winner share image                           |
@@ -1941,7 +1943,7 @@ Recommended indexes:
 Constraint:
 
 ```text
-UNIQUE(weekStart, weekEnd)
+UNIQUE(dayStart, dayEnd)
 ```
 
 ## 19.6 ShareEvent
@@ -2029,11 +2031,11 @@ model Rating {
   @@index([guestId, createdAt])
 }
 
-model WeeklyWinner {
+model DailyWinner {
   id                 String   @id @default(uuid())
   sourceOutfitId     String?
-  weekStart          DateTime
-  weekEnd            DateTime
+  dayStart          DateTime
+  dayEnd            DateTime
   shortCode          String
   winnerImagePath    String
   socialImagePath    String?
@@ -2042,7 +2044,7 @@ model WeeklyWinner {
   finalWeightedScore Decimal
   createdAt          DateTime @default(now())
 
-  @@unique([weekStart, weekEnd])
+  @@unique([dayStart, dayEnd])
 }
 ```
 
@@ -2278,13 +2280,14 @@ POST /api/cron/expire-outfits
 
 Must require a cron secret.
 
-## 20.10 Weekly winner cron
+## 20.10 Daily winner cron
 
 ```http
-POST /api/cron/select-weekly-winner
+POST /api/cron/select-daily-winner
 ```
 
-Must require a cron secret and be idempotent.
+Runs daily at `00:05 Asia/Jakarta`, must require a cron secret, and must be
+idempotent.
 
 ---
 
@@ -2363,8 +2366,8 @@ outfits/{outfitId}/final.webp
 outfits/{outfitId}/download.png
 outfits/{outfitId}/thumbnail.webp
 outfits/{outfitId}/social.jpg
-weekly-winners/{weekKey}/winner.webp
-weekly-winners/{weekKey}/social.jpg
+daily-winners/{dayKey}/winner.webp
+daily-winners/{dayKey}/social.jpg
 ```
 
 ## 21.5 Storage permissions
@@ -2433,7 +2436,7 @@ The pipeline should delete partial files or mark them for orphan cleanup.
 
 ### Threat: rating manipulation
 
-**Risk:** unfair weekly winner.
+**Risk:** unfair daily winner.
 
 **Controls:**
 
@@ -2570,7 +2573,7 @@ Supabase public client keys are not used for database writes.
 At minimum, operators must be able to:
 
 - hide a published outfit;
-- exclude an outfit from weekly ranking;
+- exclude an outfit from daily ranking;
 - inspect failed rendering records;
 - manually run cleanup;
 - review suspicious activity logs.
@@ -2599,7 +2602,7 @@ the submission must no longer appear in:
 - Top Rated;
 - Trending;
 - Newest;
-- weekly eligibility.
+- daily eligibility.
 
 ## 23.3 Physical cleanup
 
@@ -2649,9 +2652,9 @@ Recommended behavior:
 - guest database record may remain up to fourteen days after last activity;
 - guest record may be deleted once it owns no active outfits and has no active ratings.
 
-## 23.6 Weekly winner retention
+## 23.6 Daily winner retention
 
-Weekly winner snapshots are not regular submissions.
+Daily winner snapshots are not regular submissions.
 
 They may remain for the campaign duration and be archived later.
 
@@ -2738,7 +2741,7 @@ Title:
 White Chorus — Dress, Create, and Share
 
 Description:
-Dress two characters, publish your look to the Hall of Fame, earn community ratings, and compete for the weekly spotlight.
+Dress two characters, publish your look to the Hall of Fame, earn community ratings, and compete for the daily spotlight.
 ```
 
 ## 26.2 Hall of Fame metadata
@@ -2769,7 +2772,7 @@ The sitemap may include:
 
 - landing;
 - Hall of Fame;
-- Weekly Winners;
+- Daily Winners;
 - active submission URLs.
 
 Expired URLs must be removed in the next sitemap generation.
@@ -2801,7 +2804,7 @@ rating_submitted
 rating_updated
 download_clicked
 share_clicked
-weekly_winners_view
+daily_winners_view
 ```
 
 ## 27.2 Funnel
@@ -2820,7 +2823,7 @@ Landing view
 
 ## 27.3 Competition metrics
 
-- eligible submissions per week;
+- eligible submissions per day;
 - submissions below minimum rating count;
 - winner weighted score;
 - winner average;
@@ -2868,7 +2871,7 @@ Monitor:
 - database connection errors;
 - cleanup results;
 - stuck PROCESSING records;
-- weekly winner job result;
+- daily winner job result;
 - rate-limit blocks;
 - Turnstile failures.
 
@@ -2878,7 +2881,7 @@ Recommended alerts:
 
 - publish failure rate > 5% over 15 minutes;
 - cleanup job fails;
-- weekly winner job fails;
+- daily winner job fails;
 - database unavailable;
 - storage upload failure spike;
 - PROCESSING records older than 15 minutes.
@@ -2961,7 +2964,7 @@ Required targets:
 - One Piece versus Top/Bottom rule;
 - rating validation;
 - weighted score;
-- weekly tie-breakers;
+- daily tie-breakers;
 - expiration calculation;
 - rate-limit window logic;
 - short-code generation.
@@ -2981,7 +2984,7 @@ Required flows:
 - block self-rating;
 - block expired rating;
 - cleanup expired submission;
-- select weekly winner;
+- select daily winner;
 - rerun winner cron idempotently.
 
 ## 30.3 End-to-end tests
@@ -2999,7 +3002,7 @@ Required user journeys:
 9. rate;
 10. download;
 11. share or copy link;
-12. view weekly winner.
+12. view daily winner.
 
 ## 30.4 Visual tests
 
@@ -3107,7 +3110,7 @@ Recommended environment settings:
 
 ```text
 REVIEWS_ENABLED=false
-WEEKLY_WINNER_ENABLED=true
+DAILY_WINNER_ENABLED=true
 DOWNLOAD_ENABLED=true
 SHARING_ENABLED=true
 TURNSTILE_MODE=adaptive
@@ -3193,10 +3196,10 @@ The schedule is realistic only when all character, clothing, background, logo, a
 
 **Exit condition:** guests can rate, download, and share active looks.
 
-## Day 6 — Weekly winner, security, and cleanup
+## Day 6 — Daily winner, security, and cleanup
 
 - implement weighted score;
-- implement weekly winner selection;
+- implement daily winner selection;
 - implement winner snapshot;
 - implement cleanup cron;
 - implement orphan cleanup;
@@ -3206,7 +3209,7 @@ The schedule is realistic only when all character, clothing, background, logo, a
 - add abuse logs;
 - add protected operator hide action or documented database procedure.
 
-**Exit condition:** weekly and retention lifecycle works and core abuse controls are active.
+**Exit condition:** daily and retention lifecycle works and core abuse controls are active.
 
 ## Day 7 — QA, polish, and production
 
@@ -3299,9 +3302,9 @@ The schedule is realistic only when all character, clothing, background, logo, a
 - common share links work;
 - no personal identity appears.
 
-## 33.7 Weekly winner
+## 33.7 Daily winner
 
-- weekly period is calculated correctly;
+- daily period is calculated correctly;
 - minimum rating count is enforced;
 - weighted score is used;
 - tie-breakers are deterministic;
@@ -3342,7 +3345,7 @@ White Chorus MVP is done when:
 4. source assets align correctly in generated images;
 5. Hall of Fame works with at least 100 seeded test submissions;
 6. rating constraints are verified at the database level;
-7. weekly winner selection is tested with deterministic fixtures;
+7. daily winner selection is tested with deterministic fixtures;
 8. seven-day expiration is tested using accelerated test timestamps;
 9. Storage cleanup is verified;
 10. production secrets are configured;
@@ -3365,7 +3368,7 @@ White Chorus MVP is done when:
 | Bot publication                                   | Hall of Fame spam            | Limits, duplicate hash, IP hash, adaptive Turnstile              |
 | Rating manipulation                               | Unfair winner                | Unique guest rating, weighted score, minimum count, abuse review |
 | Users delete cookies                              | New guest identity           | Accept as anonymous-system limitation                            |
-| Late weekly entries have less exposure            | Competition fairness concern | Accepted MVP trade-off; revisit with cohort windows later        |
+| Late daily entries have less exposure             | Competition fairness concern | Accepted MVP trade-off; revisit with cohort windows later        |
 | Social preview caches stale metadata              | Old preview remains          | Stable image per submission and cache-aware testing              |
 | Music restarts on navigation                      | Broken experience            | Persistent root-layout audio provider                            |
 | Autoplay is blocked                               | No music at entry            | Explicit entry interaction                                       |
@@ -3383,7 +3386,6 @@ White Chorus MVP is done when:
 
 - individual randomize/reset;
 - filters by background or style;
-- weekly leaderboard countdown;
 - operator dashboard;
 - better abuse scoring;
 - share templates optimized for Stories;
@@ -3396,7 +3398,7 @@ White Chorus MVP is done when:
 - saved personal gallery;
 - badges;
 - campaign challenges;
-- themed weekly competitions;
+- themed daily competitions;
 - more characters;
 - more categories;
 - seasonal collections.
@@ -3436,7 +3438,7 @@ The following must be available or locked before Day 1:
 16. Supabase Storage bucket.
 17. Vercel project.
 18. Cloudflare Turnstile site and secret keys.
-19. Default weekly timezone confirmation.
+19. Default daily timezone confirmation.
 20. Final watermark decision.
 21. Exact campaign start date, if the site has a launch window.
 22. Operator responsible for abuse review and cron monitoring.
@@ -3508,9 +3510,9 @@ SUBMISSION_RETENTION_DAYS=7
 GUEST_RETENTION_DAYS=14
 STUCK_PROCESSING_MINUTES=15
 
-WEEKLY_WINNER_ENABLED=true
-WEEKLY_TIMEZONE=Asia/Jakarta
-WEEKLY_MIN_RATINGS=5
+DAILY_WINNER_ENABLED=true
+DAILY_TIMEZONE=Asia/Jakarta
+DAILY_MIN_RATINGS=5
 
 MUSIC_DEFAULT_VOLUME=0.35
 
@@ -3527,7 +3529,7 @@ src/
 │   ├── studio/
 │   ├── hall-of-fame/
 │   ├── outfits/[id]/
-│   ├── weekly-winners/
+│   ├── daily-winners/
 │   └── api/
 │       ├── guest/session/
 │       ├── outfits/
@@ -3536,7 +3538,7 @@ src/
 │       ├── outfits/[id]/share/
 │       ├── outfits/[id]/download/
 │       ├── cron/expire-outfits/
-│       └── cron/select-weekly-winner/
+│       └── cron/select-daily-winner/
 ├── components/
 │   ├── audio/
 │   ├── studio/
@@ -3582,7 +3584,7 @@ EXPIRED
    └── cleanup → deleted
 ```
 
-## Appendix E — Weekly winner score example
+## Appendix E — Daily winner score example
 
 Suppose:
 
@@ -3627,7 +3629,7 @@ Submission B ranks higher because its rating has much stronger evidence.
 - [ ] Turnstile configured.
 - [ ] Cron secret configured.
 - [ ] Cleanup cron scheduled.
-- [ ] Weekly winner cron scheduled.
+- [ ] Daily winner cron scheduled.
 - [ ] Music file loads and loops.
 - [ ] Mute preference persists.
 - [ ] Both characters align on desktop.

@@ -3,9 +3,13 @@ import "server-only";
 import { z } from "zod";
 
 import { publicConfig } from "@/config/public-config";
+import { getDailyWinnerSourceIds } from "@/features/daily-winners/daily-winner-lookup";
 import { getPrisma } from "@/server/database/prisma";
 import { getGeneratedAssetStorage } from "@/server/storage/generated-asset-storage";
-import type { OutfitCardDTO } from "@/features/outfits/outfit.types";
+import type {
+  HallOutfitCardDTO,
+  OutfitCardDTO,
+} from "@/features/outfits/outfit.types";
 import { trendingScore } from "@/features/hall-of-fame/trending-score";
 
 export const hallQuerySchema = z.object({
@@ -13,6 +17,7 @@ export const hallQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
 });
 export type HallQuery = z.infer<typeof hallQuerySchema>;
+export const HALL_PAGE_SIZE = 9;
 
 type CardRecord = {
   id: string;
@@ -24,7 +29,15 @@ type CardRecord = {
   expiresAt: Date | null;
 };
 
-function toCard(record: CardRecord, now: Date): OutfitCardDTO {
+type HallCardRecord = CardRecord & {
+  guestId: string;
+};
+
+function toCard(
+  record: CardRecord,
+  now: Date,
+  dailyWinnerIds: Set<string>,
+): OutfitCardDTO {
   return {
     id: record.id,
     shortCode: record.shortCode,
@@ -42,12 +55,49 @@ function toCard(record: CardRecord, now: Date): OutfitCardDTO {
           Math.ceil((record.expiresAt.getTime() - now.getTime()) / 86_400_000),
         )
       : 0,
+    isDailyWinner: dailyWinnerIds.has(record.id),
   };
 }
 
-export async function getHallOfFamePage(query: HallQuery) {
+async function toCards(records: CardRecord[], now: Date) {
+  const dailyWinnerIds = await getDailyWinnerSourceIds(
+    records.map((record) => record.id),
+  );
+  return records.map((record) => toCard(record, now, dailyWinnerIds));
+}
+
+async function toHallCards(
+  records: HallCardRecord[],
+  now: Date,
+  viewerGuestId?: string,
+): Promise<HallOutfitCardDTO[]> {
+  const outfitIds = records.map((record) => record.id);
+  const [dailyWinnerIds, viewerRatings] = await Promise.all([
+    getDailyWinnerSourceIds(outfitIds),
+    viewerGuestId
+      ? getPrisma().rating.findMany({
+          where: { guestId: viewerGuestId, outfitId: { in: outfitIds } },
+          select: { outfitId: true, value: true },
+        })
+      : Promise.resolve([]),
+  ]);
+  const viewerRatingByOutfit = new Map(
+    viewerRatings.map((rating) => [rating.outfitId, rating.value]),
+  );
+
+  return records.map((record) => ({
+    ...toCard(record, now, dailyWinnerIds),
+    canRate: !viewerGuestId || record.guestId !== viewerGuestId,
+    viewerRating: viewerRatingByOutfit.get(record.id) ?? null,
+  }));
+}
+
+export async function getHallOfFamePage(
+  query: HallQuery,
+  viewerGuestId?: string,
+) {
   const now = new Date();
-  const pageSize = 9;
+  const pageSize = HALL_PAGE_SIZE;
   const where = {
     status: "PUBLISHED" as const,
     expiresAt: { gt: now },
@@ -61,6 +111,7 @@ export async function getHallOfFamePage(query: HallQuery) {
     ratingCount: true,
     publishedAt: true,
     expiresAt: true,
+    guestId: true,
   };
   const totalItems = await getPrisma().outfit.count({ where });
 
@@ -79,7 +130,7 @@ export async function getHallOfFamePage(query: HallQuery) {
       },
     });
     const start = (query.page - 1) * pageSize;
-    const items = records
+    const rankedRecords = records
       .sort((a, b) => {
         const scoreDifference =
           trendingScore({
@@ -98,8 +149,8 @@ export async function getHallOfFamePage(query: HallQuery) {
           });
         return scoreDifference || a.id.localeCompare(b.id);
       })
-      .slice(start, start + pageSize)
-      .map((record) => toCard(record, now));
+      .slice(start, start + pageSize);
+    const items = await toHallCards(rankedRecords, now, viewerGuestId);
     return {
       items,
       pagination: {
@@ -127,7 +178,7 @@ export async function getHallOfFamePage(query: HallQuery) {
     select,
   });
   return {
-    items: records.map((record) => toCard(record, now)),
+    items: await toHallCards(records, now, viewerGuestId),
     pagination: {
       page: query.page,
       pageSize,
@@ -137,12 +188,12 @@ export async function getHallOfFamePage(query: HallQuery) {
   };
 }
 
-export async function getFeaturedOutfits(): Promise<OutfitCardDTO[]> {
+export async function getHomepageOutfits(take = 7): Promise<OutfitCardDTO[]> {
   const now = new Date();
   const records = await getPrisma().outfit.findMany({
     where: { status: "PUBLISHED", expiresAt: { gt: now } },
     orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
-    take: 3,
+    take,
     select: {
       id: true,
       shortCode: true,
@@ -153,5 +204,31 @@ export async function getFeaturedOutfits(): Promise<OutfitCardDTO[]> {
       expiresAt: true,
     },
   });
-  return records.map((record) => toCard(record, now));
+  return toCards(records, now);
+}
+
+export async function getRelatedOutfits(
+  excludedId: string,
+  take = 3,
+): Promise<OutfitCardDTO[]> {
+  const now = new Date();
+  const records = await getPrisma().outfit.findMany({
+    where: {
+      id: { not: excludedId },
+      status: "PUBLISHED",
+      expiresAt: { gt: now },
+    },
+    orderBy: [{ weightedScore: "desc" }, { publishedAt: "desc" }],
+    take,
+    select: {
+      id: true,
+      shortCode: true,
+      thumbnailPath: true,
+      ratingAverage: true,
+      ratingCount: true,
+      publishedAt: true,
+      expiresAt: true,
+    },
+  });
+  return toCards(records, now);
 }

@@ -4,8 +4,8 @@ import { describe, expect, it } from "vitest";
 import { getServerEnv } from "@/config/env";
 import { consumeRateLimit } from "@/features/abuse-protection/rate-limit";
 import { upsertRating } from "@/features/ratings/upsert-rating";
-import { getCompletedWeekPeriod } from "@/features/weekly-winners/week-period";
-import { selectWeeklyWinner } from "@/features/weekly-winners/weekly-winners";
+import { getCompletedDayPeriod } from "@/features/daily-winners/day-period";
+import { selectDailyWinner } from "@/features/daily-winners/daily-winners";
 import { getPrisma } from "@/server/database/prisma";
 import { hmacHex } from "@/server/security/crypto";
 import { createMemoryGeneratedAssetStorage } from "../support/test-adapters";
@@ -102,9 +102,9 @@ describe.skipIf(!runDatabaseTests)("PostgreSQL concurrency", () => {
     }
   });
 
-  it("snapshots the completed weekly period idempotently", async () => {
+  it("snapshots the completed daily period idempotently", async () => {
     const now = new Date();
-    const period = getCompletedWeekPeriod(now);
+    const period = getCompletedDayPeriod(now);
     const owner = await prisma!.guest.create({
       data: {
         sessionTokenHash: hash(randomUUID()),
@@ -139,17 +139,17 @@ describe.skipIf(!runDatabaseTests)("PostgreSQL concurrency", () => {
     storage.files.set(finalImagePath, Buffer.from("winner"));
     storage.files.set(socialImagePath, Buffer.from("social"));
     try {
-      const first = await selectWeeklyWinner(now, storage);
-      const second = await selectWeeklyWinner(now, storage);
+      const first = await selectDailyWinner(now, storage);
+      const second = await selectDailyWinner(now, storage);
       expect(first.status).toBe("selected");
       expect(second.status).toBe("already-selected");
-      const winner = await prisma!.weeklyWinner.findUniqueOrThrow({
-        where: { weekKey: period.key },
+      const winner = await prisma!.dailyWinner.findUniqueOrThrow({
+        where: { dayKey: period.key },
       });
       expect(winner.sourceOutfitId).toBe(outfit.id);
       expect(storage.files.has(winner.winnerImagePath)).toBe(true);
     } finally {
-      await prisma!.weeklyWinner.deleteMany({ where: { weekKey: period.key } });
+      await prisma!.dailyWinner.deleteMany({ where: { dayKey: period.key } });
       await prisma!.outfit.delete({ where: { id: outfit.id } });
       await prisma!.guest.delete({ where: { id: owner.id } });
     }

@@ -2,14 +2,13 @@ import "server-only";
 
 import { timingSafeEqual } from "node:crypto";
 
-import { getServerEnv } from "@/config/env";
-
 export function assertSameOrigin(request: Request): void {
   const origin = request.headers.get("origin");
   try {
     if (
       !origin ||
-      new URL(origin).origin !== new URL(getServerEnv().APP_URL).origin
+      new URL(origin).origin !==
+        new URL(process.env.APP_URL ?? "http://localhost:3000").origin
     )
       throw new Error("INVALID_ORIGIN");
   } catch {

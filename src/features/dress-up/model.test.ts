@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   defaultConfiguration,
+  emptyCharacter,
   isPublishReady,
+  resetConfiguration,
   selectItem,
 } from "@/features/dress-up/model";
 import {
@@ -25,9 +27,27 @@ describe("dress-up model", () => {
     });
   });
 
+  it("removes the active accessory without changing the other layers", () => {
+    const current = {
+      ...defaultConfiguration.characterA,
+      accessoryIds: ["a-accessory-03"],
+    };
+    expect(selectItem(current, "accessory", null)).toEqual({
+      ...current,
+      accessoryIds: [],
+    });
+  });
+
   it("always randomizes a publish-ready configuration", () => {
     expect(isPublishReady(randomizeConfiguration(() => 0.2))).toBe(true);
     expect(isPublishReady(randomizeConfiguration(() => 0.8))).toBe(true);
+  });
+
+  it("resets both characters to their unstyled base state", () => {
+    expect(resetConfiguration.backgroundId).toBe("background-01");
+    expect(resetConfiguration.characterA).toEqual(emptyCharacter);
+    expect(resetConfiguration.characterB).toEqual(emptyCharacter);
+    expect(isPublishReady(resetConfiguration)).toBe(false);
   });
 
   it("rejects an asset used in the wrong category", () => {
@@ -50,6 +70,26 @@ describe("dress-up model", () => {
     ).toBeGreaterThan(
       layers.findIndex((layer) => layer.path.includes("character-a/tops")),
     );
-    expect(layers.at(-1)?.path).toBe("/brand/watermark-white.png");
+    expect(
+      layers.find((layer) => layer.path.includes("character-b/base"))?.top,
+    ).toBe(30);
+    expect(
+      layers.find((layer) => layer.path.includes("character-b/tops"))?.top,
+    ).toBe(30);
+    expect(
+      layers.find((layer) => layer.path.includes("character-a/base"))?.top,
+    ).toBe(0);
+    expect(
+      layers.find((layer) => layer.path.includes("character-a/base")),
+    ).toMatchObject({ characterId: "character-a", kind: "base" });
+    expect(
+      layers.find((layer) => layer.path.includes("character-b/tops")),
+    ).toMatchObject({ characterId: "character-b", kind: "wardrobe" });
+    expect(layers.at(-1)).toMatchObject({
+      path: "/brand/watermark-white.png",
+      characterId: null,
+      kind: "watermark",
+      layerOrder: 1000,
+    });
   });
 });

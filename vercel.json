@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     { "path": "/api/cron/expire-outfits", "schedule": "15 17 * * *" },
-    { "path": "/api/cron/select-weekly-winner", "schedule": "5 17 * * 0" }
+    { "path": "/api/cron/select-daily-winner", "schedule": "5 17 * * *" }
   ]
 }

@@ -3,8 +3,10 @@
 import { motion, type HTMLMotionProps, type Variants } from "framer-motion";
 
 import { useHydratedReducedMotion } from "@/components/motion/use-hydrated-reduced-motion";
-
-const standardEase = [0.2, 0.8, 0.2, 1] as const;
+import {
+  motionDurations,
+  motionEase,
+} from "@/components/motion/motion-presets";
 
 type ManagedMotionProps =
   | "initial"
@@ -39,7 +41,7 @@ function useRevealOptions({
     viewport: inView ? { once: true, amount: 0.2 } : undefined,
     transition: reduceMotion
       ? { duration: 0 }
-      : { duration: 0.36, delay, ease: standardEase },
+      : { duration: motionDurations.slow, delay, ease: motionEase },
   };
 }
 
@@ -173,7 +175,7 @@ const staggerItemVariants: Variants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.22, ease: standardEase },
+    transition: { duration: motionDurations.base, ease: motionEase },
   },
 };
 

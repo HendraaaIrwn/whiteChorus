@@ -16,7 +16,19 @@ export type DressUpAsset = {
   swatch: string;
 };
 
-export type RenderLayer = { path: string; layerOrder: number };
+export type RenderLayer = {
+  path: string;
+  layerOrder: number;
+  left: number;
+  top: number;
+  characterId: CharacterId | null;
+  kind: "base" | "wardrobe" | "watermark";
+};
+
+export const characterStageOffsets = {
+  "character-a": { left: 0, top: 0 },
+  "character-b": { left: 0, top: 30 },
+} as const;
 
 export const productionAssets = {
   characterBases: [
@@ -32,11 +44,29 @@ export const productionAssets = {
     },
   ],
   watermarkPath: "/brand/watermark-white.png",
-  logoPath: "/brand/logo-horizontal.svg",
+  logoPath: "/brand/logo-horizontal.webp",
   audioPath: "/audio/white-chorus-theme.mp3",
+  defaultLookPath: "/dress-up/previews/default-look.webp",
+  defaultSocialPath: "/dress-up/previews/default-look-social.jpg",
+  characterLooks: {
+    emir: "/dress-up/previews/emir-look-01.webp",
+    friska: "/dress-up/previews/friska-look-01.webp",
+  },
+  characterIcons: {
+    emir: "/dress-up/previews/emir-icon.webp",
+    friska: "/dress-up/previews/friska-icon.webp",
+  },
 } as const;
 
-const swatches = ["#8296b5", "#7db6ba", "#fab876", "#d9878e", "#f6c45c"];
+export const dressUpAssetRevision = "2026-08-08-official-2";
+
+const swatches = [
+  "var(--blue-400)",
+  "var(--mint-500)",
+  "var(--apricot-500)",
+  "var(--coral-400)",
+  "var(--yellow-400)",
+];
 
 function makeCharacterAssets(
   characterId: CharacterId,
@@ -76,7 +106,7 @@ export const backgroundAssets: DressUpAsset[] = Array.from(
     return {
       id: `background-${number}`,
       label: [
-        "Paper Sky",
+        "Dance Floor",
         "Mint Room",
         "Apricot Beach",
         "Blue Garden",
@@ -169,19 +199,36 @@ export function renderLayersFor(value: DressUpConfiguration): RenderLayer[] {
     ...value.characterB.accessoryIds,
   ].filter(Boolean) as string[];
   return [
-    ...productionAssets.characterBases.map(({ path, layerOrder }) => ({
-      path,
-      layerOrder,
-    })),
+    ...productionAssets.characterBases.map(
+      ({ characterId, path, layerOrder }) => ({
+        path,
+        layerOrder,
+        characterId,
+        kind: "base" as const,
+        ...characterStageOffsets[characterId],
+      }),
+    ),
     ...ids.flatMap((id) => {
       const asset = getAsset(id);
       return (
         asset?.renderPaths.map((path, index) => ({
           path,
           layerOrder: asset.layerOrder + index / 100,
+          characterId: asset.characterId,
+          kind: "wardrobe" as const,
+          ...(asset.characterId
+            ? characterStageOffsets[asset.characterId]
+            : { left: 0, top: 0 }),
         })) ?? []
       );
     }),
-    { path: productionAssets.watermarkPath, layerOrder: 1000 },
+    {
+      path: productionAssets.watermarkPath,
+      layerOrder: 1000,
+      left: 0,
+      top: 0,
+      characterId: null,
+      kind: "watermark" as const,
+    },
   ].sort((left, right) => left.layerOrder - right.layerOrder);
 }

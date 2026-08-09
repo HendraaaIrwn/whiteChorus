@@ -1,147 +1,64 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
-import { Check, Dices, RotateCcw, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useHydratedReducedMotion } from "@/components/motion/use-hydrated-reduced-motion";
 import { Button } from "@/components/ui/button";
-import { TurnstileChallenge } from "@/features/abuse-protection/turnstile-challenge";
+import { Dialog } from "@/components/ui/dialog";
 import {
   backgroundAssets,
-  getAsset,
   getItems,
-  renderLayersFor,
   validateCatalogConfiguration,
 } from "@/features/dress-up/catalog";
 import {
-  categories,
   defaultConfiguration,
   dressUpConfigurationSchema,
   isPublishReady,
+  resetConfiguration,
   selectItem,
   type CharacterId,
   type DressUpConfiguration,
   type OutfitCategory,
 } from "@/features/dress-up/model";
 import { randomizeConfiguration } from "@/features/dress-up/randomize";
+import { StudioActionDock } from "@/features/dress-up/studio-action-dock";
+import { CharacterStage } from "@/features/dress-up/studio-stage";
+import {
+  studioPanelLabels,
+  WardrobeDeck,
+  type StudioPanel,
+  type StudioWardrobeItem,
+} from "@/features/dress-up/studio-wardrobe";
 import { ensureGuestSession } from "@/features/guest-session/ensure-guest-session";
 import { useHydrated } from "@/lib/use-hydrated";
-import { publicConfig } from "@/config/public-config";
 
-const DRAFT_KEY = "white-chorus:dress-up-draft:v1";
-const standardEase = [0.2, 0.8, 0.2, 1] as const;
-const confettiPieces = [
-  { x: -74, y: -48, rotate: -38, color: "#d9878e" },
-  { x: -42, y: -76, rotate: 24, color: "#f6c45c" },
-  { x: -10, y: -64, rotate: -18, color: "#7db6ba" },
-  { x: 22, y: -78, rotate: 42, color: "#8296b5" },
-  { x: 54, y: -58, rotate: -28, color: "#fab876" },
-  { x: 78, y: -34, rotate: 34, color: "#d9878e" },
-] as const;
+const DRAFT_KEY = "white-chorus:dress-up-draft:v2";
 
 function selectedId(
   configuration: DressUpConfiguration,
   character: CharacterId,
-  category: OutfitCategory,
+  panel: StudioPanel,
 ): string | null {
+  if (panel === "background") return configuration.backgroundId;
   const value =
     character === "character-a"
       ? configuration.characterA
       : configuration.characterB;
-  return category === "hair"
+  return panel === "hair"
     ? value.hairId
-    : category === "top"
+    : panel === "top"
       ? value.topId
-      : category === "bottom"
+      : panel === "bottom"
         ? value.bottomId
-        : category === "one-piece"
+        : panel === "one-piece"
           ? value.onePieceId
-          : category === "shoes"
+          : panel === "shoes"
             ? value.shoesId
             : (value.accessoryIds[0] ?? null);
 }
 
-function FixtureCharacter({
-  character,
-  configuration,
-  active,
-}: {
-  character: CharacterId;
-  configuration: DressUpConfiguration;
-  active: boolean;
-}) {
-  const reduceMotion = useHydratedReducedMotion();
-  const value =
-    character === "character-a"
-      ? configuration.characterA
-      : configuration.characterB;
-  const top = getAsset(value.onePieceId ?? value.topId)?.swatch;
-  const bottom = getAsset(value.onePieceId ?? value.bottomId)?.swatch;
-  const hair = getAsset(value.hairId)?.swatch;
-  const accessory = getAsset(value.accessoryIds[0] ?? null)?.swatch;
-  const layerTransition = {
-    duration: reduceMotion ? 0 : 0.2,
-    ease: standardEase,
-  };
-
-  return (
-    <motion.div
-      className={`studio-avatar studio-avatar--${character === "character-a" ? "a" : "b"}`}
-      animate={
-        reduceMotion
-          ? { opacity: 1 }
-          : { opacity: active ? 1 : 0.76, scale: active ? 1.02 : 0.98 }
-      }
-      transition={{ type: "spring", stiffness: 320, damping: 28 }}
-    >
-      <motion.span
-        key={`hair:${value.hairId ?? "none"}`}
-        className="studio-avatar__hair"
-        style={{ background: hair }}
-        initial={reduceMotion ? false : { opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={layerTransition}
-      />
-      <span className="studio-avatar__face" />
-      <motion.span
-        key={`top:${value.onePieceId ?? value.topId ?? "none"}`}
-        className="studio-avatar__top"
-        style={{ background: top }}
-        initial={reduceMotion ? false : { opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={layerTransition}
-      />
-      <motion.span
-        key={`bottom:${value.onePieceId ?? value.bottomId ?? "none"}`}
-        className="studio-avatar__bottom"
-        style={{ background: bottom }}
-        initial={reduceMotion ? false : { opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={layerTransition}
-      />
-      <AnimatePresence initial={false}>
-        {accessory ? (
-          <motion.span
-            key={value.accessoryIds[0]}
-            className="studio-avatar__accessory"
-            style={{ background: accessory }}
-            initial={reduceMotion ? false : { opacity: 0, scale: 0.7 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={reduceMotion ? undefined : { opacity: 0, scale: 0.7 }}
-            transition={layerTransition}
-          />
-        ) : null}
-      </AnimatePresence>
-    </motion.div>
-  );
-}
-
 export function DressUpStudio() {
   const hydrated = useHydrated();
-  const reduceMotion = useHydratedReducedMotion();
   const restoredConfiguration = useMemo(() => {
     if (!hydrated) return defaultConfiguration;
     const saved = window.localStorage.getItem(DRAFT_KEY);
@@ -160,16 +77,29 @@ export function DressUpStudio() {
   const configuration = configurationOverride ?? restoredConfiguration;
   const [activeCharacter, setActiveCharacter] =
     useState<CharacterId>("character-a");
-  const [category, setCategory] = useState<OutfitCategory>("hair");
+  const [activePanel, setActivePanel] = useState<StudioPanel>("hair");
   const [status, setStatus] = useState("Your draft is ready.");
   const [publishing, setPublishing] = useState(false);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [challengeRequired, setChallengeRequired] = useState(false);
   const [challengeVersion, setChallengeVersion] = useState(0);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [backgroundDirection, setBackgroundDirection] = useState(1);
+  const [randomizeCycle, setRandomizeCycle] = useState(0);
+  const [randomizing, setRandomizing] = useState(false);
+  const randomizeTimer = useRef<number | null>(null);
+
   const receiveTurnstileToken = useCallback((token: string | null) => {
     setTurnstileToken(token);
     if (token) setStatus("Security check complete. You can publish now.");
+  }, []);
+  const reportStageArtworkError = useCallback(() => {
+    setStatus("Some studio artwork could not load. Your draft is still safe.");
+  }, []);
+  const reportWardrobeArtworkError = useCallback(() => {
+    setStatus(
+      "Some wardrobe artwork could not load. You can still choose another item.",
+    );
   }, []);
 
   useEffect(() => {
@@ -177,28 +107,121 @@ export function DressUpStudio() {
       window.localStorage.setItem(DRAFT_KEY, JSON.stringify(configuration));
   }, [configuration, hydrated]);
 
-  const items = useMemo(
-    () => getItems(activeCharacter, category),
-    [activeCharacter, category],
+  useEffect(
+    () => () => {
+      if (randomizeTimer.current) window.clearTimeout(randomizeTimer.current);
+    },
+    [],
   );
-  const activeSelectedId = selectedId(configuration, activeCharacter, category);
-  const background = getAsset(configuration.backgroundId);
-  const productionMode = publicConfig.assetMode === "production";
-  const selectionMotionKey = `${configuration.backgroundId}:${activeCharacter}:${category}:${activeSelectedId ?? "none"}`;
 
-  function updateCharacter(assetId: string | null) {
+  const currentBackgroundIndex = Math.max(
+    0,
+    backgroundAssets.findIndex(
+      (asset) => asset.id === configuration.backgroundId,
+    ),
+  );
+  const items = useMemo<StudioWardrobeItem[]>(() => {
+    if (activePanel === "background") return backgroundAssets;
+    const wardrobeItems = getItems(activeCharacter, activePanel);
+    return activePanel === "accessory"
+      ? [{ id: "none", label: "None", swatch: "transparent" }, ...wardrobeItems]
+      : wardrobeItems;
+  }, [activeCharacter, activePanel]);
+  const activeSelectedId = selectedId(
+    configuration,
+    activeCharacter,
+    activePanel,
+  );
+
+  function chooseCharacter(character: CharacterId) {
+    if (publishing) return;
+    setActiveCharacter(character);
+    setStatus(
+      `${character === "character-a" ? "Emir" : "Friska"} is ready to dress.`,
+    );
+  }
+
+  function choosePanel(panel: StudioPanel) {
+    if (publishing) return;
+    setActivePanel(panel);
+    setStatus(
+      panel === "background"
+        ? "Shared backgrounds are ready."
+        : `${studioPanelLabels[panel]} opened for ${activeCharacter === "character-a" ? "Emir" : "Friska"}.`,
+    );
+  }
+
+  function chooseItem(item: StudioWardrobeItem) {
+    if (publishing) return;
+    if (activePanel === "background") {
+      const nextIndex = backgroundAssets.findIndex(
+        (asset) => asset.id === item.id,
+      );
+      if (nextIndex < 0) return;
+      setBackgroundDirection(nextIndex >= currentBackgroundIndex ? 1 : -1);
+      setConfiguration((current) => ({
+        ...(current ?? restoredConfiguration),
+        backgroundId: item.id,
+      }));
+      setStatus(`${item.label} background selected.`);
+      return;
+    }
+
     setConfiguration((current) => {
       current ??= restoredConfiguration;
       const key =
         activeCharacter === "character-a" ? "characterA" : "characterB";
-      return { ...current, [key]: selectItem(current[key], category, assetId) };
+      return {
+        ...current,
+        [key]: selectItem(
+          current[key],
+          activePanel as OutfitCategory,
+          item.id === "none" ? null : item.id,
+        ),
+      };
     });
     setStatus(
-      `${category.replace("-", " ")} selected for ${activeCharacter === "character-a" ? "Emir" : "Friska"}.`,
+      `${item.label} selected for ${activeCharacter === "character-a" ? "Emir" : "Friska"}.`,
+    );
+  }
+
+  function randomize() {
+    if (publishing || randomizing) return;
+    const next = randomizeConfiguration();
+    const nextBackgroundIndex = backgroundAssets.findIndex(
+      (asset) => asset.id === next.backgroundId,
+    );
+    setBackgroundDirection(
+      nextBackgroundIndex >= currentBackgroundIndex ? 1 : -1,
+    );
+    setConfiguration(next);
+    setRandomizeCycle((current) => current + 1);
+    setRandomizing(true);
+    if (randomizeTimer.current) window.clearTimeout(randomizeTimer.current);
+    randomizeTimer.current = window.setTimeout(() => {
+      setRandomizing(false);
+      randomizeTimer.current = null;
+    }, 680);
+    setStatus("A valid random look is ready.");
+  }
+
+  function reset() {
+    if (publishing) return;
+    if (randomizeTimer.current) {
+      window.clearTimeout(randomizeTimer.current);
+      randomizeTimer.current = null;
+    }
+    setRandomizing(false);
+    setBackgroundDirection(currentBackgroundIndex > 0 ? -1 : 1);
+    setConfiguration(resetConfiguration);
+    setRandomizeCycle(0);
+    setStatus(
+      "The studio has been reset. Dress both voices before publishing.",
     );
   }
 
   async function publish() {
+    if (publishing || randomizing) return;
     setPublishing(true);
     setPublishedUrl(null);
     try {
@@ -241,415 +264,74 @@ export function DressUpStudio() {
 
   return (
     <div className="studio-layout">
-      <section className="studio-stage-panel">
-        <motion.div
-          className={`studio-stage${productionMode ? "studio-stage--production" : ""}`}
-          animate={{
-            background: productionMode
-              ? "#fdf7ec"
-              : `linear-gradient(145deg, ${background?.swatch ?? "#b6e5e8"}, #fdf7ec 70%)`,
-          }}
-          transition={{ duration: reduceMotion ? 0 : 0.22, ease: standardEase }}
-        >
-          {productionMode && background ? (
-            <AnimatePresence initial={false}>
-              <motion.img
-                key={`background:${background.renderPaths[0]}`}
-                className="studio-production-layer"
-                src={background.renderPaths[0]}
-                alt=""
-                initial={reduceMotion ? false : { opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={reduceMotion ? undefined : { opacity: 0 }}
-                transition={{ duration: reduceMotion ? 0 : 0.22 }}
-              />
-              {renderLayersFor(configuration).map((layer) => (
-                <motion.img
-                  key={layer.path}
-                  className="studio-production-layer"
-                  src={layer.path}
-                  alt=""
-                  initial={reduceMotion ? false : { opacity: 0, scale: 0.99 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={reduceMotion ? undefined : { opacity: 0 }}
-                  transition={{ duration: reduceMotion ? 0 : 0.2 }}
-                />
-              ))}
-            </AnimatePresence>
-          ) : null}
-          <span className="studio-stage__label">{background?.label}</span>
-          {!productionMode ? (
-            <>
-              <FixtureCharacter
-                character="character-a"
-                configuration={configuration}
-                active={activeCharacter === "character-a"}
-              />
-              <FixtureCharacter
-                character="character-b"
-                configuration={configuration}
-                active={activeCharacter === "character-b"}
-              />
-            </>
-          ) : null}
-          {!productionMode ? (
-            <AnimatePresence initial={false} mode="popLayout">
-              <motion.span
-                className="studio-stage__sparkle"
-                key={selectionMotionKey}
-                initial={reduceMotion ? false : { opacity: 0, scale: 0.7 }}
-                animate={
-                  reduceMotion
-                    ? { opacity: 1 }
-                    : { opacity: [0, 1, 1], scale: [0.7, 1.18, 1], rotate: 8 }
-                }
-                exit={reduceMotion ? undefined : { opacity: 0, scale: 0.8 }}
-                transition={{ duration: reduceMotion ? 0.08 : 0.36 }}
-                aria-hidden="true"
-              >
-                <Sparkles />
-              </motion.span>
-            </AnimatePresence>
-          ) : null}
-          <AnimatePresence>
-            {publishedUrl ? (
-              <motion.div
-                key={publishedUrl}
-                className="publish-success-burst"
-                initial={reduceMotion ? false : { opacity: 0, scale: 0.86 }}
-                animate={
-                  reduceMotion
-                    ? { opacity: [0, 1, 0] }
-                    : {
-                        opacity: [0, 1, 1, 1, 0],
-                        scale: [0.86, 1, 1, 1, 0.98],
-                      }
-                }
-                exit={{ opacity: 0 }}
-                transition={{ duration: reduceMotion ? 0.1 : 0.65 }}
-                aria-hidden="true"
-              >
-                <strong>LOOK IS LIVE!</strong>
-                {reduceMotion
-                  ? null
-                  : confettiPieces.map((piece, index) => (
-                      <motion.span
-                        key={`${piece.x}:${piece.y}`}
-                        className="confetti-piece"
-                        style={{ backgroundColor: piece.color }}
-                        initial={{ opacity: 0, x: 0, y: 0, rotate: 0 }}
-                        animate={{
-                          opacity: [0, 1, 0],
-                          x: piece.x,
-                          y: piece.y,
-                          rotate: piece.rotate,
-                        }}
-                        transition={{
-                          duration: 0.55,
-                          delay: index * 0.025,
-                          ease: standardEase,
-                        }}
-                      />
-                    ))}
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-        </motion.div>
-        <div className="character-switcher" aria-label="Choose character">
-          {(["character-a", "character-b"] as const).map((character) => {
-            const active = activeCharacter === character;
-            return (
-              <motion.button
-                key={character}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setActiveCharacter(character)}
-                className={active ? "is-active" : ""}
-                animate={reduceMotion ? undefined : { y: active ? -3 : 0 }}
-                whileTap={reduceMotion ? undefined : { scale: 0.98 }}
-                transition={{ type: "spring", stiffness: 420, damping: 30 }}
-              >
-                <span>
-                  DRESS {character === "character-a" ? "EMIR" : "FRISKA"}
-                </span>
-                {active ? (
-                  <motion.span
-                    className="character-switcher__indicator"
-                    layoutId="active-character-indicator"
-                    aria-hidden="true"
-                  />
-                ) : null}
-              </motion.button>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="studio-controls" aria-label="Dress-up controls">
-        <div>
-          <p className="eyebrow">Shared scene</p>
-          <h2>CHOOSE A BACKGROUND</h2>
-        </div>
-        <div
-          className="background-row"
-          role="radiogroup"
-          aria-label="Backgrounds"
-        >
-          {backgroundAssets.map((asset) => {
-            const selected = configuration.backgroundId === asset.id;
-            return (
-              <motion.button
-                key={asset.id}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                title={asset.label}
-                style={
-                  productionMode
-                    ? {
-                        backgroundImage: `url(${asset.previewPath})`,
-                        backgroundPosition: "center",
-                        backgroundSize: "cover",
-                      }
-                    : { background: asset.swatch }
-                }
-                animate={
-                  reduceMotion
-                    ? undefined
-                    : {
-                        opacity: selected ? 1 : 0.78,
-                        scale: selected ? 1 : 0.96,
-                      }
-                }
-                whileHover={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
-                whileTap={reduceMotion ? undefined : { scale: 0.94 }}
-                transition={{ duration: reduceMotion ? 0 : 0.18 }}
-                onClick={() =>
-                  setConfiguration((current) => ({
-                    ...(current ?? restoredConfiguration),
-                    backgroundId: asset.id,
-                  }))
-                }
-              >
-                <AnimatePresence initial={false}>
-                  {selected ? (
-                    <motion.span
-                      key="selected"
-                      className="background-check"
-                      initial={
-                        reduceMotion ? false : { opacity: 0, scale: 0.6 }
-                      }
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={
-                        reduceMotion ? undefined : { opacity: 0, scale: 0.6 }
-                      }
-                    >
-                      <Check aria-hidden="true" />
-                    </motion.span>
-                  ) : null}
-                </AnimatePresence>
-              </motion.button>
-            );
-          })}
-        </div>
-
-        <div
-          className="category-tabs"
-          role="tablist"
-          aria-label="Outfit categories"
-        >
-          {categories.map((item) => {
-            const selected = category === item;
-            return (
-              <motion.button
-                key={item}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                onClick={() => setCategory(item)}
-                whileTap={reduceMotion ? undefined : { scale: 0.97 }}
-              >
-                <span>{item.toUpperCase()}</span>
-                {selected ? (
-                  <motion.span
-                    className="category-tab__indicator"
-                    layoutId="studio-category-indicator"
-                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                    aria-hidden="true"
-                  />
-                ) : null}
-              </motion.button>
-            );
-          })}
-        </div>
-
-        <div
-          className="item-grid"
-          role="radiogroup"
-          aria-label={`${category} items`}
-        >
-          <AnimatePresence initial={false} mode="popLayout">
-            {(category === "accessory"
-              ? [{ id: "none", label: "None", swatch: "transparent" }, ...items]
-              : items
-            ).map((asset) => {
-              const selected =
-                asset.id === "none"
-                  ? !activeSelectedId
-                  : activeSelectedId === asset.id;
-              return (
-                <motion.button
-                  key={asset.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  className={selected ? "is-selected" : ""}
-                  layout={reduceMotion ? false : "position"}
-                  initial={
-                    reduceMotion ? false : { opacity: 0, scale: 0.94, y: 6 }
-                  }
-                  animate={
-                    reduceMotion
-                      ? { opacity: 1 }
-                      : {
-                          opacity: 1,
-                          scale: selected ? 1 : 0.98,
-                          y: selected ? -2 : 0,
-                        }
-                  }
-                  exit={
-                    reduceMotion ? undefined : { opacity: 0, scale: 0.94, y: 4 }
-                  }
-                  whileHover={reduceMotion ? undefined : { scale: 1, y: -2 }}
-                  whileTap={reduceMotion ? undefined : { scale: 0.96 }}
-                  transition={{ duration: reduceMotion ? 0 : 0.18 }}
-                  onClick={() =>
-                    updateCharacter(asset.id === "none" ? null : asset.id)
-                  }
-                >
-                  {productionMode && "previewPath" in asset ? (
-                    <img
-                      className="item-thumbnail"
-                      src={asset.previewPath}
-                      alt=""
-                    />
-                  ) : (
-                    <span
-                      className="item-swatch"
-                      style={{ background: asset.swatch }}
-                    />
-                  )}
-                  <span>{asset.label.toUpperCase()}</span>
-                  <AnimatePresence initial={false}>
-                    {selected ? (
-                      <motion.span
-                        key="selected"
-                        className="item-check"
-                        initial={
-                          reduceMotion ? false : { opacity: 0, scale: 0.5 }
-                        }
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={
-                          reduceMotion ? undefined : { opacity: 0, scale: 0.5 }
-                        }
-                      >
-                        <Check aria-hidden="true" />
-                      </motion.span>
-                    ) : null}
-                  </AnimatePresence>
-                </motion.button>
-              );
-            })}
-          </AnimatePresence>
-        </div>
-
-        <div className="studio-secondary-actions">
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setConfiguration(randomizeConfiguration());
-              setStatus("A valid random look is ready.");
-            }}
-          >
-            <Dices aria-hidden="true" /> RANDOMIZE ALL
-          </Button>
-          <Button
-            variant="tertiary"
-            onClick={() => {
-              setConfiguration(defaultConfiguration);
-              setStatus("The studio has been reset.");
-            }}
-          >
-            <RotateCcw aria-hidden="true" /> RESET ALL
-          </Button>
-        </div>
-      </section>
-
-      <AnimatePresence>
-        {challengeRequired ? (
-          <motion.section
-            key="publish-security"
-            className="turnstile-panel"
-            aria-label="Publish security"
-            initial={reduceMotion ? false : { opacity: 0, y: 12, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={reduceMotion ? undefined : { opacity: 0, y: -8 }}
-            transition={{ duration: reduceMotion ? 0 : 0.22 }}
-          >
-            <strong>ONE MORE BEAT</strong>
-            <TurnstileChallenge
-              key={challengeVersion}
-              onToken={receiveTurnstileToken}
-            />
-          </motion.section>
-        ) : null}
-      </AnimatePresence>
-
-      <div className="publish-bar">
-        <div className="publish-status" aria-live="polite" aria-atomic="true">
-          <AnimatePresence initial={false} mode="wait">
-            <motion.p
-              key={status}
-              initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
-              transition={{ duration: reduceMotion ? 0.08 : 0.18 }}
-            >
-              {status}
-            </motion.p>
-          </AnimatePresence>
-        </div>
-        <AnimatePresence>
+      <CharacterStage
+        activeCharacter={activeCharacter}
+        backgroundDirection={backgroundDirection}
+        configuration={configuration}
+        disabled={publishing}
+        onCharacterChange={chooseCharacter}
+        onArtworkError={reportStageArtworkError}
+        publishedUrl={publishedUrl}
+        publishing={publishing}
+        randomizeCycle={randomizeCycle}
+        randomizing={randomizing}
+      />
+      <WardrobeDeck
+        activeCharacter={activeCharacter}
+        activePanel={activePanel}
+        disabled={publishing}
+        items={items}
+        onArtworkError={reportWardrobeArtworkError}
+        onItemChange={chooseItem}
+        onPanelChange={choosePanel}
+        randomizeCycle={randomizeCycle}
+        randomizing={randomizing}
+        selectedItemId={activeSelectedId}
+      />
+      <StudioActionDock
+        challengeRequired={challengeRequired}
+        challengeVersion={challengeVersion}
+        onPublish={() => void publish()}
+        onRandomize={randomize}
+        onReset={reset}
+        onTurnstileToken={receiveTurnstileToken}
+        controlsDisabled={publishing}
+        publishDisabled={
+          randomizing ||
+          !isPublishReady(configuration) ||
+          (challengeRequired && !turnstileToken)
+        }
+        publishedUrl={publishedUrl}
+        publishing={publishing}
+        randomizing={randomizing}
+        status={status}
+      />
+      <Dialog
+        open={Boolean(publishedUrl)}
+        onOpenChange={(open) => {
+          if (!open) setPublishedUrl(null);
+        }}
+        title="YOUR LOOK IS IN THE HALL"
+        description="The published image is ready to rate, share, and download. Your studio draft remains saved on this device."
+        returnFocusSelector=".studio-action--publish"
+      >
+        <p className="dialog-status" role="status">
+          Publish complete. Your look is live.
+        </p>
+        <div className="dialog-actions">
           {publishedUrl ? (
-            <motion.div
-              key={publishedUrl}
-              className="publish-result"
-              initial={reduceMotion ? false : { opacity: 0, scale: 0.94 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={reduceMotion ? undefined : { opacity: 0, scale: 0.94 }}
-              transition={{ duration: reduceMotion ? 0.08 : 0.22 }}
+            <Link
+              className="button button--secondary button--lg"
+              href={publishedUrl}
             >
-              <Link
-                className="button button--secondary button--md"
-                href={publishedUrl}
-              >
-                VIEW YOUR LOOK
-              </Link>
-            </motion.div>
+              VIEW YOUR LOOK
+            </Link>
           ) : null}
-        </AnimatePresence>
-        <Button
-          size="lg"
-          loading={publishing}
-          disabled={
-            !isPublishReady(configuration) ||
-            (challengeRequired && !turnstileToken)
-          }
-          onClick={() => void publish()}
-        >
-          PUBLISH TO HALL OF FAME
-        </Button>
-      </div>
+          <Button variant="tertiary" onClick={() => setPublishedUrl(null)}>
+            KEEP DRESSING
+          </Button>
+        </div>
+      </Dialog>
     </div>
   );
 }

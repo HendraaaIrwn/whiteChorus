@@ -113,7 +113,7 @@ async function createProcessing(
           where: {
             guestId,
             status: "PUBLISHED",
-            publishedAt: { gte: startOfDay(now, env.WEEKLY_TIMEZONE) },
+            publishedAt: { gte: startOfDay(now, env.DAILY_TIMEZONE) },
           },
         }),
       ]);

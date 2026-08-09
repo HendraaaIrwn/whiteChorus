@@ -29,7 +29,11 @@ export const sharpOutfitRenderer: OutfitRenderer = {
     const finalWebp = await sharp(publicFile(background.renderPaths[0]!))
       .resize(1200, 1600, { fit: "cover" })
       .composite(
-        layers.map(({ path: input }) => ({ input: publicFile(input) })),
+        layers.map(({ left, path: input, top }) => ({
+          input: publicFile(input),
+          left,
+          top,
+        })),
       )
       .webp({ quality: 92 })
       .toBuffer();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Star } from "lucide-react";
 
@@ -13,18 +13,30 @@ export function StarRating({
   average,
   count,
   disabled,
+  variant = "detail",
 }: {
   outfitId: string;
   initialValue: number | null;
   average: number;
   count: number;
   disabled: boolean;
+  variant?: "detail" | "compact";
 }) {
+  const feedbackId = useId();
   const reduceMotion = useHydratedReducedMotion();
   const [value, setValue] = useState(initialValue);
+  const [previewValue, setPreviewValue] = useState<number | null>(null);
   const [summary, setSummary] = useState({ average, count });
   const [message, setMessage] = useState(
-    disabled ? "You cannot rate this look." : "Choose one to five stars.",
+    disabled
+      ? "This one is yours."
+      : initialValue
+        ? variant === "compact"
+          ? ""
+          : `Your rating is ${initialValue} out of 5. Choose another star to update it.`
+        : variant === "compact"
+          ? ""
+          : "Choose one to five stars.",
   );
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,7 +59,11 @@ export function StarRating({
       if (!response.ok || !payload.data)
         throw new Error(payload.error?.message ?? "Rating could not be saved.");
       setSummary(payload.data.aggregate);
-      setMessage(`You rated this look ${next} out of 5 stars.`);
+      setMessage(
+        variant === "compact"
+          ? "Thanks ♡"
+          : `Thanks ♡ Your rating is ${next} out of 5.`,
+      );
     } catch (error) {
       setValue(previous);
       setMessage(
@@ -59,7 +75,7 @@ export function StarRating({
   }
 
   return (
-    <div className="rating-panel">
+    <div className={`rating-panel rating-panel--${variant}`}>
       <div className="rating-summary">
         <AnimatePresence initial={false} mode="wait">
           <motion.strong
@@ -76,15 +92,22 @@ export function StarRating({
           {summary.count} {summary.count === 1 ? "rating" : "ratings"}
         </span>
       </div>
-      <fieldset className="star-rating">
+      <fieldset
+        className="star-rating"
+        data-cursor={disabled ? undefined : "RATE"}
+        aria-describedby={feedbackId}
+        onPointerLeave={() => setPreviewValue(null)}
+      >
         <legend className="sr-only">Rate this look</legend>
         {[1, 2, 3, 4, 5].map((star) => {
-          const selected = (value ?? 0) >= star;
+          const selected = (previewValue ?? value ?? 0) >= star;
           const chosen = value === star;
           return (
             <label
               key={star}
-              aria-label={`${star} ${star === 1 ? "star" : "stars"}`}
+              onPointerEnter={() => {
+                if (!disabled && !submitting) setPreviewValue(star);
+              }}
             >
               <input
                 type="radio"
@@ -92,17 +115,35 @@ export function StarRating({
                 value={star}
                 checked={chosen}
                 disabled={disabled || submitting}
+                aria-label={`Rate ${star} out of 5 stars`}
+                onFocus={() => {
+                  if (!disabled && !submitting) setPreviewValue(star);
+                }}
+                onBlur={() => setPreviewValue(null)}
                 onChange={() => void rate(star)}
               />
               <motion.span
                 className="star-rating__icon"
                 animate={
-                  reduceMotion || !chosen
+                  reduceMotion
                     ? { scale: 1, rotate: 0 }
-                    : { scale: [1, 1.25, 1], rotate: [0, -8, 0] }
+                    : previewValue !== null && selected
+                      ? {
+                          scale: previewValue === star ? 1.13 : 1.05,
+                          rotate: previewValue === star ? -5 : 0,
+                        }
+                      : chosen
+                        ? {
+                            scale: [0.85, 1.16, 1],
+                            rotate: [0, -5, 0],
+                          }
+                        : { scale: 1, rotate: 0 }
                 }
-                whileHover={reduceMotion ? undefined : { scale: 1.12 }}
-                transition={{ duration: reduceMotion ? 0 : 0.3 }}
+                transition={{
+                  duration: reduceMotion ? 0.08 : 0.24,
+                  delay:
+                    !reduceMotion && previewValue !== null ? star * 0.025 : 0,
+                }}
               >
                 <Star
                   aria-hidden="true"
@@ -113,7 +154,12 @@ export function StarRating({
           );
         })}
       </fieldset>
-      <div aria-live="polite" aria-atomic="true">
+      <div
+        id={feedbackId}
+        className="rating-feedback"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         <AnimatePresence initial={false} mode="wait">
           <motion.p
             key={message}

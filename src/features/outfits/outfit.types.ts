@@ -7,12 +7,19 @@ export type OutfitCardDTO = {
   publishedAt: string;
   expiresAt: string;
   remainingDays: number;
+  isDailyWinner: boolean;
+};
+
+export type HallOutfitCardDTO = OutfitCardDTO & {
+  canRate: boolean;
+  viewerRating: number | null;
 };
 
 export type OutfitDetailDTO = OutfitCardDTO & {
   finalImageUrl: string;
   downloadUrl: string;
   socialImageUrl: string;
+  isOwner: boolean;
   canRate: boolean;
   viewerRating: number | null;
 };
