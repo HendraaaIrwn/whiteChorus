@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion, useScroll, useTransform, type Variants } from "framer-motion";
+import { useRef } from "react";
 
+import { editorialEase } from "@/components/motion/motion-presets";
+import { useHydratedReducedMotion } from "@/components/motion/use-hydrated-reduced-motion";
 import { MusicControl } from "@/features/audio/music-control";
 import {
   ChorusWave,
@@ -10,34 +14,156 @@ import {
   ThreadStroke,
 } from "@/features/home/home-doodles";
 
+const footerEase = [0.22, 1, 0.36, 1] as const;
+
 export function SiteFooter() {
   const pathname = usePathname();
+  const footerRef = useRef<HTMLElement>(null);
+  const reduceMotion = useHydratedReducedMotion();
+  const { scrollYProgress } = useScroll({
+    target: footerRef,
+    offset: ["start end", "end end"],
+  });
+  const titleDrift = useTransform(
+    scrollYProgress,
+    [0, 1],
+    reduceMotion ? [0, 0] : [26, -26],
+  );
+
+  const titleGroup: Variants = {
+    hidden: { scale: 0.98 },
+    visible: {
+      scale: 1,
+      transition: reduceMotion
+        ? { duration: 0 }
+        : {
+            delayChildren: 0.14,
+            staggerChildren: 0.14,
+            duration: 0.95,
+            ease: editorialEase,
+          },
+    },
+  };
+  const titleLine: Variants = {
+    hidden: { y: "115%" },
+    visible: {
+      y: "0%",
+      transition: reduceMotion
+        ? { duration: 0 }
+        : { duration: 0.8, ease: editorialEase },
+    },
+  };
+
+  const sparkVariants = (delay: number, rotate: number): Variants => ({
+    hidden: { opacity: 0, scale: 0.42, rotate: rotate - 16 },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      rotate,
+      transition: reduceMotion
+        ? { duration: 0 }
+        : { delay, duration: 0.62, ease: editorialEase },
+    },
+  });
 
   if (pathname === "/") {
     return (
-      <footer className="site-footer site-footer--home">
+      <footer ref={footerRef} className="site-footer site-footer--home">
         <div className="home-editorial-footer home-container">
-          <span className="home-label">10 · THE LAST NOTE</span>
-          <div
+          <motion.span
+            className="home-label"
+            initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+            whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.4 }}
+            transition={{
+              duration: reduceMotion ? 0 : 0.6,
+              ease: footerEase,
+            }}
+          >
+            07 · THE LAST NOTE
+          </motion.span>
+          <motion.div
             className="home-editorial-footer__title"
             aria-label="White Chorus"
+            style={reduceMotion ? undefined : { y: titleDrift }}
           >
-            <span>WHITE</span>
-            <span>CHORUS</span>
-          </div>
-          <nav aria-label="Footer navigation">
+            <motion.div
+              className="home-editorial-footer__title-lines"
+              variants={titleGroup}
+              initial={reduceMotion ? false : "hidden"}
+              whileInView={reduceMotion ? undefined : "visible"}
+              viewport={{ once: true, amount: 0.35 }}
+              aria-hidden="true"
+            >
+              <span className="home-editorial-footer__mask-line">
+                <motion.span variants={titleLine}>WHITE</motion.span>
+              </span>
+              <span className="home-editorial-footer__mask-line">
+                <motion.span variants={titleLine}>CHORUS</motion.span>
+              </span>
+            </motion.div>
+          </motion.div>
+          <motion.nav
+            aria-label="Footer navigation"
+            initial={reduceMotion ? false : { opacity: 0, y: 20 }}
+            whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{
+              duration: reduceMotion ? 0 : 0.62,
+              delay: reduceMotion ? 0 : 0.92,
+              ease: footerEase,
+            }}
+          >
             <Link href="/">HOME</Link>
             <Link href="/studio">DRESS UP</Link>
             <Link href="/hall-of-fame">HALL OF FAME</Link>
             <Link href="/daily-winners">DAILY WINNERS</Link>
-          </nav>
-          <div className="home-editorial-footer__meta">
-            <span>ANONYMOUS BY DESIGN.</span>
-            <MusicControl />
+          </motion.nav>
+          <motion.div
+            className="home-editorial-footer__meta"
+            initial={reduceMotion ? false : { opacity: 0, y: 20 }}
+            whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{
+              duration: reduceMotion ? 0 : 0.62,
+              delay: reduceMotion ? 0 : 1.02,
+              ease: footerEase,
+            }}
+          >
             <span>WHITE CHORUS © 2026</span>
-          </div>
+            <MusicControl />
+          </motion.div>
           <ChorusWave aria-hidden="true" />
-          <Sparkle aria-hidden="true" />
+          <motion.div
+            className="home-editorial-footer__spark home-editorial-footer__spark--one"
+            variants={sparkVariants(0.55, 10)}
+            initial={reduceMotion ? false : "hidden"}
+            whileInView={reduceMotion ? undefined : "visible"}
+            viewport={{ once: true, amount: 0.3 }}
+            aria-hidden="true"
+          >
+            <SparkleIdle reduceMotion={reduceMotion} delay={1.5} />
+          </motion.div>
+          <motion.div
+            className="home-editorial-footer__spark home-editorial-footer__spark--two"
+            variants={sparkVariants(0.72, -8)}
+            initial={reduceMotion ? false : "hidden"}
+            whileInView={reduceMotion ? undefined : "visible"}
+            viewport={{ once: true, amount: 0.3 }}
+            aria-hidden="true"
+          >
+            <SparkleIdle reduceMotion={reduceMotion} delay={2.1} />
+          </motion.div>
+          <motion.div
+            className="home-editorial-footer__spark home-editorial-footer__spark--three"
+            variants={sparkVariants(0.9, 14)}
+            initial={reduceMotion ? false : "hidden"}
+            whileInView={reduceMotion ? undefined : "visible"}
+            viewport={{ once: true, amount: 0.3 }}
+            aria-hidden="true"
+          >
+            <SparkleIdle reduceMotion={reduceMotion} delay={2.8} />
+          </motion.div>
         </div>
       </footer>
     );
@@ -151,5 +277,31 @@ export function SiteFooter() {
         <span>Anonymous by design.</span>
       </div>
     </footer>
+  );
+}
+
+function SparkleIdle({
+  reduceMotion,
+  delay,
+}: {
+  reduceMotion: boolean;
+  delay: number;
+}) {
+  return (
+    <motion.span
+      className="home-editorial-footer__spark-idle"
+      animate={
+        reduceMotion
+          ? undefined
+          : {
+              scale: [1, 1.09, 1],
+              rotate: [0, 6, 0],
+              opacity: [0.82, 1, 0.82],
+            }
+      }
+      transition={{ duration: 4.6, repeat: Infinity, ease: "easeInOut", delay }}
+    >
+      <Sparkle aria-hidden="true" />
+    </motion.span>
   );
 }

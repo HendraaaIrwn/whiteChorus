@@ -543,7 +543,9 @@ test("uses the Studio contextual cursor only on a ready fine pointer", async ({
   await expect(cursor).toHaveAttribute("data-label", "SAVE");
 
   await page.getByRole("button", { name: "Open menu" }).hover();
-  await expect(cursor).toHaveAttribute("data-label", "OPEN");
+  await expect(cursor).not.toHaveAttribute("data-label", "OPEN");
+  await expect(cursor.locator("span")).toBeEmpty();
+  await expect(cursor).toHaveCSS("width", "14px");
 });
 
 test("preserves the draft and skips celebration when publish fails", async ({

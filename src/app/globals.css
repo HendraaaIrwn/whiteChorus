@@ -642,6 +642,10 @@ main:focus {
   color: var(--brand);
 }
 
+.site-loading {
+  min-height: 100svh;
+}
+
 .skeleton {
   display: block;
   min-height: 20px;
@@ -933,7 +937,6 @@ main:focus {
   .cta-strip {
     grid-template-columns: 1fr auto;
   }
-
 }
 
 @media (min-width: 1024px) {

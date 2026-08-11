@@ -1,7 +1,6 @@
-import Link from "next/link";
-
+import { RadialRevealButton } from "@/components/ui/radial-reveal-button";
 import { Bow, Sparkle, ThreadStroke } from "@/features/home/home-doodles";
-import { Magnetic, MaskedHeading } from "@/features/home/home-motion";
+import { MaskedHeading } from "@/features/home/home-motion";
 
 export function HallOfFameCta() {
   return (
@@ -13,12 +12,16 @@ export function HallOfFameCta() {
           className="hall-cta__title"
           lines={["YOU’VE SEEN", "THE CHORUS.", "NOW MAKE YOURS."]}
         />
-        <Magnetic className="hall-cta__action-wrap">
-          <Link className="hall-cta__action" href="/studio" data-cursor="DRESS">
+        <div className="hall-cta__action-wrap">
+          <RadialRevealButton
+            className="hall-cta__action"
+            href="/studio"
+            variant="navy"
+          >
             <span>START DRESSING</span>
             <span aria-hidden="true">↗</span>
-          </Link>
-        </Magnetic>
+          </RadialRevealButton>
+        </div>
         <span className="hall-cta__note">
           TWO CHARACTERS · ONE SHARED STAGE · ANONYMOUS BY DESIGN
         </span>

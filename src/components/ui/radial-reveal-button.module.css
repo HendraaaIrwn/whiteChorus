@@ -1,0 +1,115 @@
+.root {
+  --button-bg: var(--navy-800);
+  --button-text: var(--cream-50);
+  --button-reveal-bg: var(--cream-50);
+  --button-reveal-text: var(--navy-800);
+  --button-border: var(--navy-800);
+
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 12px 20px;
+  border: var(--border-width) solid var(--button-border);
+  border-radius: var(--radius-md);
+  color: var(--button-text);
+  background: var(--button-bg);
+  font-family: var(--font-display);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.025em;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-instant) var(--ease-standard),
+    color var(--duration-instant) var(--ease-standard);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.navy {
+  --button-bg: var(--navy-800);
+  --button-text: var(--cream-50);
+}
+
+.apricot {
+  --button-bg: var(--apricot-500);
+  --button-text: var(--navy-800);
+}
+
+.mint {
+  --button-bg: var(--mint-300);
+  --button-text: var(--navy-800);
+}
+
+.label,
+.reveal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: inherit;
+}
+
+.label {
+  position: relative;
+  z-index: 1;
+}
+
+.reveal {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  padding: inherit;
+  color: var(--button-reveal-text);
+  background: var(--button-reveal-bg);
+  pointer-events: none;
+}
+
+.root:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.root:disabled,
+.root[aria-disabled="true"] {
+  border-color: var(--navy-500);
+  color: var(--text-secondary);
+  background: var(--surface-muted);
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.root:disabled .reveal,
+.root[aria-disabled="true"] .reveal {
+  display: none;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .reveal {
+    display: none;
+  }
+
+  .root:active:not(:disabled):not([aria-disabled="true"]) {
+    color: var(--button-reveal-text);
+    background: var(--button-reveal-bg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root {
+    transition-duration: var(--duration-instant);
+  }
+
+  .reveal {
+    clip-path: none !important;
+    opacity: 0;
+    transition: opacity var(--duration-instant) var(--ease-standard);
+  }
+
+  .root[data-pointer-hovered="true"] .reveal {
+    opacity: 1;
+  }
+}

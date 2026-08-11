@@ -27,10 +27,7 @@ export function SiteHeader() {
     let frame = 0;
     const update = () => {
       frame = 0;
-      const heroHeight =
-        document.querySelector(".home-hero")?.getBoundingClientRect().height ??
-        window.innerHeight;
-      const compact = window.scrollY > heroHeight - 84;
+      const compact = window.scrollY > 8;
       setHomeCompact((current) => (current === compact ? current : compact));
     };
     const scheduleUpdate = () => {

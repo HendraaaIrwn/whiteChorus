@@ -7,6 +7,7 @@ import { useMusic } from "@/components/providers/music-provider";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { ensureGuestSession } from "@/features/guest-session/ensure-guest-session";
+import { useHydrated } from "@/lib/use-hydrated";
 
 export function EntryAudioGate({
   triggerClassName,
@@ -17,6 +18,7 @@ export function EntryAudioGate({
 } = {}) {
   const router = useRouter();
   const { enter } = useMusic();
+  const hydrated = useHydrated();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -32,6 +34,7 @@ export function EntryAudioGate({
       <Button
         className={triggerClassName}
         size="lg"
+        disabled={!hydrated}
         onClick={(event) => {
           event.currentTarget.focus();
           setOpen(true);
