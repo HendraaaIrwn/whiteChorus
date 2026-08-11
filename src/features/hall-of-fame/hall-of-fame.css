@@ -985,20 +985,11 @@
 }
 
 .hall-cta__action {
-  display: inline-flex;
   min-height: 76px;
-  align-items: center;
   gap: 36px;
   padding: 18px 26px;
-  border: 1px solid var(--hall-fg-heading);
   border-radius: 12px;
-  background: var(--hall-bg-card);
   font-size: clamp(0.9rem, 1.3vw, 1.1rem);
-  font-weight: 800;
-  transition:
-    color 320ms var(--hall-ease),
-    background-color 320ms var(--hall-ease),
-    transform 220ms var(--hall-ease);
 }
 
 .hall-cta__note {
@@ -1316,13 +1307,6 @@ html.hall-custom-cursor-ready .site-footer--hall button {
 
   .hall-spotlight__media:hover img {
     transform: scale(1.018) translateY(-3px);
-  }
-
-  .hall-cta__action:hover,
-  .hall-cta__action:focus-visible {
-    color: var(--hall-bg-page);
-    background: var(--hall-brand);
-    transform: translateY(-3px);
   }
 }
 

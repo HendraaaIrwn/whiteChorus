@@ -2,25 +2,8 @@ import type { SVGProps } from "react";
 
 type DoodleProps = SVGProps<SVGSVGElement>;
 
-export function FabricRibbon(props: DoodleProps) {
-  return (
-    <svg viewBox="0 0 900 420" fill="none" {...props}>
-      <path
-        d="M-34 253C102 44 207 50 298 203C383 347 456 352 533 202C609 54 685 37 763 176C818 274 866 298 941 204"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="112"
-      />
-      <path
-        d="M-34 253C102 44 207 50 298 203C383 347 456 352 533 202C609 54 685 37 763 176C818 274 866 298 941 204"
-        stroke="var(--home-accent-aqua-soft)"
-        strokeDasharray="7 24"
-        strokeLinecap="round"
-        strokeWidth="3"
-      />
-    </svg>
-  );
-}
+export const chorusWavePath =
+  "M0 126C62 126 62 44 125 44C188 44 188 193 250 193C313 193 313 73 375 73C438 73 438 157 500 157C563 157 563 23 625 23C688 23 688 208 750 208C813 208 813 92 875 92C938 92 938 126 1000 126";
 
 export function ThreadStroke(props: DoodleProps) {
   return (
@@ -62,7 +45,8 @@ export function Bow(props: DoodleProps) {
     <svg viewBox="0 0 220 160" fill="none" {...props}>
       <path
         d="M108 80C75 26 14 18 16 58C18 95 65 102 108 80ZM112 80C145 26 206 18 204 58C202 95 155 102 112 80ZM109 82C83 105 74 133 82 151M112 82C141 104 151 130 143 151"
-        stroke="currentColor"
+        stroke="var(--home-brand-strong)"
+        strokeWidth="5"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -71,7 +55,8 @@ export function Bow(props: DoodleProps) {
         cy="79"
         r="14"
         fill="var(--home-bg-card)"
-        stroke="currentColor"
+        stroke="var(--home-brand-strong)"
+        strokeWidth="5"
       />
     </svg>
   );
@@ -81,7 +66,7 @@ export function ChorusWave(props: DoodleProps) {
   return (
     <svg viewBox="0 0 1000 240" fill="none" {...props}>
       <path
-        d="M0 126C62 126 62 44 125 44C188 44 188 193 250 193C313 193 313 73 375 73C438 73 438 157 500 157C563 157 563 23 625 23C688 23 688 208 750 208C813 208 813 92 875 92C938 92 938 126 1000 126"
+        d={chorusWavePath}
         pathLength="1"
         stroke="currentColor"
         strokeLinecap="round"

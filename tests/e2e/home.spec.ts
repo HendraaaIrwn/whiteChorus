@@ -362,7 +362,7 @@ test("keeps teaser choices local and leaves the Studio draft untouched", async (
   );
   await page.goto("/", { waitUntil: "domcontentloaded" });
 
-  await page.getByRole("button", { name: "B FRISKA" }).click();
+  await page.getByRole("button", { name: "FRISKA", exact: true }).click();
   await page.getByRole("tab", { name: "ONE-PIECE" }).click();
   await page.getByRole("radio", { name: "one piece 03" }).click();
   await expect(
@@ -382,21 +382,59 @@ test("keeps teaser choices local and leaves the Studio draft untouched", async (
   ).toBe("sentinel-home-draft");
 });
 
-test("exposes truthful fallback cards and the open Daily Spotlight", async ({
+test("renders exactly the seven-scene homepage composition", async ({
   page,
 }) => {
   await page.goto("/", { waitUntil: "domcontentloaded" });
 
-  const curatedCard = page.getByRole("link", { name: /Dress up from/ }).first();
-  await expect(curatedCard).toHaveAttribute("href", "/studio");
-  await expect(curatedCard).toContainText("CURATED");
-  await expect(curatedCard).not.toContainText(/RATINGS|SCORE/);
+  const scenes = page.locator(".home-page > section");
+  await expect(scenes).toHaveCount(6);
+  await expect(scenes.locator(".home-label")).toHaveText([
+    "01 · AN INTERACTIVE FASHION CHORUS",
+    "02 · THE DUET",
+    "03 · TRY A VERSE",
+    "04 · ONE LIVING ARCHIVE",
+    "05 · THREE BEATS",
+    "06 · YOUR TURN",
+  ]);
 
+  await expect(page.locator(".site-footer--home .home-label")).toHaveText(
+    "07 · THE LAST NOTE",
+  );
   await expect(
-    page.getByRole("heading", { name: "THE NEXT SPOTLIGHT IS OPEN" }),
+    page.getByRole("heading", { name: "DRESS THE CHORUS YOUR WAY." }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "BROWSE THE DAILY ARCHIVE" }),
+    page.getByRole("heading", { name: "TWO VOICES. ONE SHARED STAGE." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "MIX A LOOK. THEN MAKE IT YOURS." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "EVERY LOOK ADDS A NEW VOICE." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "HOW THE CHORUS COMES TOGETHER." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "PUT YOUR NEXT LOOK IN THE CHORUS." }),
+  ).toBeVisible();
+
+  await expect(
+    page.locator(
+      ".home-featured, .home-spotlight, .home-hall-preview, .home-look-card",
+    ),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText(/FRESH COMPOSITIONS|DAILY SPOTLIGHT/),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "EXPLORE HALL OF FAME" }),
+  ).toHaveAttribute("href", "/hall-of-fame");
+  await expect(
+    page
+      .locator(".site-footer--home")
+      .getByRole("link", { name: "DAILY WINNERS" }),
   ).toHaveAttribute("href", "/daily-winners");
 });
 
@@ -409,12 +447,14 @@ test("keeps the menu cursor compact and keyboard focus visible", async ({
   );
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("html")).toHaveClass(/home-custom-cursor-ready/);
 
+  const cursor = page.locator(".home-cursor").first();
   await page.locator('[data-cursor="DRESS"]').first().hover();
-  await expect(page.locator(".home-cursor span")).toHaveText("DRESS");
+  await expect(cursor.locator("span")).toHaveText("DRESS");
   await page.getByRole("button", { name: "Open menu" }).hover();
-  await expect(page.locator(".home-cursor span")).toBeEmpty();
-  await expect(page.locator(".home-cursor")).toHaveCSS("width", "14px");
+  await expect(cursor.locator("span")).toBeEmpty();
+  await expect(cursor).toHaveCSS("width", "14px");
 
   const menuTrigger = page.getByRole("button", { name: "Open menu" });
   await menuTrigger.focus();

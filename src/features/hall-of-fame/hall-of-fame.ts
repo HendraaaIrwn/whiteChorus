@@ -188,25 +188,6 @@ export async function getHallOfFamePage(
   };
 }
 
-export async function getHomepageOutfits(take = 7): Promise<OutfitCardDTO[]> {
-  const now = new Date();
-  const records = await getPrisma().outfit.findMany({
-    where: { status: "PUBLISHED", expiresAt: { gt: now } },
-    orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
-    take,
-    select: {
-      id: true,
-      shortCode: true,
-      thumbnailPath: true,
-      ratingAverage: true,
-      ratingCount: true,
-      publishedAt: true,
-      expiresAt: true,
-    },
-  });
-  return toCards(records, now);
-}
-
 export async function getRelatedOutfits(
   excludedId: string,
   take = 3,

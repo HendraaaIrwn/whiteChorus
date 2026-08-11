@@ -18,6 +18,7 @@ import {
 import { useHydratedReducedMotion } from "@/components/motion/use-hydrated-reduced-motion";
 import { MusicControl } from "@/features/audio/music-control";
 import { Bow, ChorusWave, Sparkle } from "@/features/home/home-doodles";
+import { useHydrated } from "@/lib/use-hydrated";
 
 const menuItems = [
   ["/", "HOME"],
@@ -288,6 +289,7 @@ export function HomeMenu() {
   const [open, setOpen] = useState(false);
   const [geometry, setGeometry] = useState<MenuGeometry | null>(null);
   const [activeArtwork, setActiveArtwork] = useState(0);
+  const hydrated = useHydrated();
   const reduceMotion = useHydratedReducedMotion();
 
   const unlockBodyScroll = useCallback(() => {
@@ -383,6 +385,7 @@ export function HomeMenu() {
         ref={triggerRef}
         className="home-menu-trigger"
         type="button"
+        disabled={!hydrated}
         aria-label="Open menu"
         aria-expanded={open}
         aria-controls="home-navigation-scene"
