@@ -1829,7 +1829,7 @@
   left: -15%;
   bottom: 10%;
   color: var(--home-brand-strong);
-  stroke-width: 5;
+  stroke-width: clamp(8px, 1vw, 14px);
 }
 
 .home-menu-scene__meta {

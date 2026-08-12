@@ -21,7 +21,10 @@ import {
   type OutfitCategory,
 } from "@/features/dress-up/model";
 import { randomizeConfiguration } from "@/features/dress-up/randomize";
-import { StudioActionDock } from "@/features/dress-up/studio-action-dock";
+import {
+  StudioActionDock,
+  type StudioFeedback,
+} from "@/features/dress-up/studio-action-dock";
 import { CharacterStage } from "@/features/dress-up/studio-stage";
 import {
   studioPanelLabels,
@@ -78,7 +81,10 @@ export function DressUpStudio() {
   const [activeCharacter, setActiveCharacter] =
     useState<CharacterId>("character-a");
   const [activePanel, setActivePanel] = useState<StudioPanel>("hair");
-  const [status, setStatus] = useState("Your draft is ready.");
+  const [feedback, setFeedback] = useState<StudioFeedback>({
+    message: "Your draft is ready.",
+    tone: "polite",
+  });
   const [publishing, setPublishing] = useState(false);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [challengeRequired, setChallengeRequired] = useState(false);
@@ -91,15 +97,24 @@ export function DressUpStudio() {
 
   const receiveTurnstileToken = useCallback((token: string | null) => {
     setTurnstileToken(token);
-    if (token) setStatus("Security check complete. You can publish now.");
+    if (token)
+      setFeedback({
+        message: "Security check complete. You can publish now.",
+        tone: "polite",
+      });
   }, []);
   const reportStageArtworkError = useCallback(() => {
-    setStatus("Some studio artwork could not load. Your draft is still safe.");
+    setFeedback({
+      message: "Some studio artwork could not load. Your draft is still safe.",
+      tone: "error",
+    });
   }, []);
   const reportWardrobeArtworkError = useCallback(() => {
-    setStatus(
-      "Some wardrobe artwork could not load. You can still choose another item.",
-    );
+    setFeedback({
+      message:
+        "Some wardrobe artwork could not load. You can still choose another item.",
+      tone: "error",
+    });
   }, []);
 
   useEffect(() => {
@@ -121,7 +136,7 @@ export function DressUpStudio() {
     ),
   );
   const items = useMemo<StudioWardrobeItem[]>(() => {
-    if (activePanel === "background") return backgroundAssets;
+    if (activePanel === "background") return [];
     const wardrobeItems = getItems(activeCharacter, activePanel);
     return activePanel === "accessory"
       ? [{ id: "none", label: "None", swatch: "transparent" }, ...wardrobeItems]
@@ -136,36 +151,43 @@ export function DressUpStudio() {
   function chooseCharacter(character: CharacterId) {
     if (publishing) return;
     setActiveCharacter(character);
-    setStatus(
-      `${character === "character-a" ? "Emir" : "Friska"} is ready to dress.`,
-    );
+    setFeedback({
+      message: `${character === "character-a" ? "Emir" : "Friska"} is ready to dress.`,
+      tone: "polite",
+    });
   }
 
   function choosePanel(panel: StudioPanel) {
     if (publishing) return;
     setActivePanel(panel);
-    setStatus(
-      panel === "background"
-        ? "Shared backgrounds are ready."
-        : `${studioPanelLabels[panel]} opened for ${activeCharacter === "character-a" ? "Emir" : "Friska"}.`,
+    setFeedback({
+      message:
+        panel === "background"
+          ? "Shared backgrounds are ready."
+          : `${studioPanelLabels[panel]} opened for ${activeCharacter === "character-a" ? "Emir" : "Friska"}.`,
+      tone: "polite",
+    });
+  }
+
+  function chooseBackground(item: StudioWardrobeItem) {
+    if (publishing) return;
+    const nextIndex = backgroundAssets.findIndex(
+      (asset) => asset.id === item.id,
     );
+    if (nextIndex < 0) return;
+    setBackgroundDirection(nextIndex >= currentBackgroundIndex ? 1 : -1);
+    setConfiguration((current) => ({
+      ...(current ?? restoredConfiguration),
+      backgroundId: item.id,
+    }));
+    setFeedback({
+      message: `${item.label} background selected.`,
+      tone: "polite",
+    });
   }
 
   function chooseItem(item: StudioWardrobeItem) {
-    if (publishing) return;
-    if (activePanel === "background") {
-      const nextIndex = backgroundAssets.findIndex(
-        (asset) => asset.id === item.id,
-      );
-      if (nextIndex < 0) return;
-      setBackgroundDirection(nextIndex >= currentBackgroundIndex ? 1 : -1);
-      setConfiguration((current) => ({
-        ...(current ?? restoredConfiguration),
-        backgroundId: item.id,
-      }));
-      setStatus(`${item.label} background selected.`);
-      return;
-    }
+    if (publishing || activePanel === "background") return;
 
     setConfiguration((current) => {
       current ??= restoredConfiguration;
@@ -180,9 +202,10 @@ export function DressUpStudio() {
         ),
       };
     });
-    setStatus(
-      `${item.label} selected for ${activeCharacter === "character-a" ? "Emir" : "Friska"}.`,
-    );
+    setFeedback({
+      message: `${item.label} selected for ${activeCharacter === "character-a" ? "Emir" : "Friska"}.`,
+      tone: "polite",
+    });
   }
 
   function randomize() {
@@ -202,7 +225,10 @@ export function DressUpStudio() {
       setRandomizing(false);
       randomizeTimer.current = null;
     }, 680);
-    setStatus("A valid random look is ready.");
+    setFeedback({
+      message: "A valid random look is ready.",
+      tone: "polite",
+    });
   }
 
   function reset() {
@@ -215,9 +241,11 @@ export function DressUpStudio() {
     setBackgroundDirection(currentBackgroundIndex > 0 ? -1 : 1);
     setConfiguration(resetConfiguration);
     setRandomizeCycle(0);
-    setStatus(
-      "The studio has been reset. Dress both voices before publishing.",
-    );
+    setFeedback({
+      message:
+        "The studio has been reset. Dress both voices before publishing.",
+      tone: "polite",
+    });
   }
 
   async function publish() {
@@ -250,13 +278,18 @@ export function DressUpStudio() {
         );
       }
       setPublishedUrl(payload.data.url);
-      setStatus("Publish complete. Your look is live.");
+      setFeedback({
+        message: "Publish complete. Your look is live.",
+        tone: "polite",
+      });
     } catch (error) {
-      setStatus(
-        error instanceof Error
-          ? error.message
-          : "Something went wrong. Please try again.",
-      );
+      setFeedback({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Something went wrong. Please try again.",
+        tone: "error",
+      });
     } finally {
       setPublishing(false);
     }
@@ -276,36 +309,41 @@ export function DressUpStudio() {
         randomizeCycle={randomizeCycle}
         randomizing={randomizing}
       />
-      <WardrobeDeck
-        activeCharacter={activeCharacter}
-        activePanel={activePanel}
-        disabled={publishing}
-        items={items}
-        onArtworkError={reportWardrobeArtworkError}
-        onItemChange={chooseItem}
-        onPanelChange={choosePanel}
-        randomizeCycle={randomizeCycle}
-        randomizing={randomizing}
-        selectedItemId={activeSelectedId}
-      />
-      <StudioActionDock
-        challengeRequired={challengeRequired}
-        challengeVersion={challengeVersion}
-        onPublish={() => void publish()}
-        onRandomize={randomize}
-        onReset={reset}
-        onTurnstileToken={receiveTurnstileToken}
-        controlsDisabled={publishing}
-        publishDisabled={
-          randomizing ||
-          !isPublishReady(configuration) ||
-          (challengeRequired && !turnstileToken)
-        }
-        publishedUrl={publishedUrl}
-        publishing={publishing}
-        randomizing={randomizing}
-        status={status}
-      />
+      <div className="studio-control-column">
+        <WardrobeDeck
+          activeCharacter={activeCharacter}
+          activePanel={activePanel}
+          backgroundItems={backgroundAssets}
+          disabled={publishing}
+          items={items}
+          onBackgroundChange={chooseBackground}
+          onArtworkError={reportWardrobeArtworkError}
+          onItemChange={chooseItem}
+          onPanelChange={choosePanel}
+          randomizeCycle={randomizeCycle}
+          randomizing={randomizing}
+          selectedBackgroundId={configuration.backgroundId}
+          selectedItemId={activeSelectedId}
+        />
+        <StudioActionDock
+          challengeRequired={challengeRequired}
+          challengeVersion={challengeVersion}
+          onPublish={() => void publish()}
+          onRandomize={randomize}
+          onReset={reset}
+          onTurnstileToken={receiveTurnstileToken}
+          controlsDisabled={publishing}
+          publishDisabled={
+            randomizing ||
+            !isPublishReady(configuration) ||
+            (challengeRequired && !turnstileToken)
+          }
+          publishedUrl={publishedUrl}
+          publishing={publishing}
+          randomizing={randomizing}
+          feedback={feedback}
+        />
+      </div>
       <Dialog
         open={Boolean(publishedUrl)}
         onOpenChange={(open) => {
