@@ -213,11 +213,7 @@ export function CharacterStage({
       className="studio-stage-panel"
       aria-label="Character stage"
       aria-busy={publishing || undefined}
-      initial={
-        reduceMotion
-          ? false
-          : { opacity: 0, clipPath: "inset(10% 0 0 0 round 36px)" }
-      }
+      initial={false}
       animate={{
         opacity: 1,
         clipPath: "inset(0% 0 0 0 round 36px)",

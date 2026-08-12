@@ -60,24 +60,234 @@ test("keeps the Studio usable at every acceptance width", async ({
         page.locator(".studio-cursor").filter({ visible: true }),
       ).toHaveCount(0);
       await expect(
-        page.locator(".category-tabs").filter({ visible: true }),
-      ).toHaveCSS("overflow-x", "auto");
-      await expect(
         page.locator(".item-rail").filter({ visible: true }),
       ).toHaveCSS("overflow-x", "auto");
     } else {
       await expect(page.getByText("STUDIO · AUTO-SAVED")).toBeVisible();
     }
 
+    const categoryTabs = page
+      .locator(".category-tabs")
+      .filter({ visible: true });
+    const categoryGeometry = await categoryTabs.evaluate((element) => {
+      const rail = element.getBoundingClientRect();
+      const wardrobe = element
+        .closest(".studio-wardrobe")!
+        .getBoundingClientRect();
+      const tabs = [...element.querySelectorAll("button")].map((tab) => {
+        const bounds = tab.getBoundingClientRect();
+        const label = tab.querySelector("span")!.getBoundingClientRect();
+        return {
+          clientWidth: tab.clientWidth,
+          fontSize: Number.parseFloat(getComputedStyle(tab).fontSize),
+          labelLeft: label.left,
+          labelRight: label.right,
+          left: bounds.left,
+          right: bounds.right,
+          scrollWidth: tab.scrollWidth,
+          top: bounds.top,
+        };
+      });
+      return {
+        clientWidth: element.clientWidth,
+        overflowX: getComputedStyle(element).overflowX,
+        scrollWidth: element.scrollWidth,
+        tabs,
+        railLeft: rail.left,
+        railRight: rail.right,
+        wardrobeLeft: wardrobe.left,
+        wardrobeRight: wardrobe.right,
+      };
+    });
+    expect(categoryGeometry.tabs).toHaveLength(6);
+    expect(categoryGeometry.overflowX).toBe("auto");
+    expect(categoryGeometry.railLeft).toBeGreaterThanOrEqual(
+      categoryGeometry.wardrobeLeft,
+    );
+    expect(categoryGeometry.railRight).toBeLessThanOrEqual(
+      categoryGeometry.wardrobeRight,
+    );
+    expect(categoryGeometry.tabs[0]!.left).toBeCloseTo(
+      categoryGeometry.railLeft,
+      0,
+    );
+    expect(
+      categoryGeometry.tabs.every(({ fontSize }) => fontSize >= 12),
+      `${viewport.width}px category labels must use the enlarged type treatment`,
+    ).toBe(true);
+    expect(
+      categoryGeometry.tabs.every(
+        ({ labelLeft, labelRight }) =>
+          labelLeft >= categoryGeometry.railLeft - 1 &&
+          labelRight <= categoryGeometry.railRight + 1,
+      ) || categoryGeometry.overflowX === "auto",
+      `${viewport.width}px category labels must remain readable or horizontally scrollable`,
+    ).toBe(true);
+    const categoryTops = categoryGeometry.tabs.map(({ top }) => top);
+    expect(
+      Math.max(...categoryTops) - Math.min(...categoryTops),
+      `${viewport.width}px outfit categories must stay in one row`,
+    ).toBeLessThanOrEqual(1);
+    const categoryGaps = categoryGeometry.tabs
+      .slice(1)
+      .map(({ left }, index) => left - categoryGeometry.tabs[index]!.right);
+    expect(
+      Math.max(...categoryGaps) - Math.min(...categoryGaps),
+      `${viewport.width}px category spacing must remain consistent`,
+    ).toBeLessThanOrEqual(1);
+    if (categoryGeometry.scrollWidth <= categoryGeometry.clientWidth + 1) {
+      expect(categoryGeometry.tabs.at(-1)!.right).toBeLessThanOrEqual(
+        categoryGeometry.railRight + 1,
+      );
+    }
+
+    await expect(page.getByRole("tab", { name: "BACKGROUND" })).toHaveCount(0);
+
+    const backgroundRail = page
+      .locator("#main-content .background-carousel__rail")
+      .filter({ visible: true });
+    await expect(backgroundRail).toHaveCSS("overflow-x", "auto");
+    await expect(
+      backgroundRail.getByRole("radio"),
+      "the permanent carousel must contain five backgrounds",
+    ).toHaveCount(5);
+    const backgroundGeometry = await backgroundRail
+      .getByRole("radio")
+      .evaluateAll((elements) =>
+        elements.map((element) => {
+          const bounds = element.getBoundingClientRect();
+          return {
+            bottom: bounds.bottom,
+            height: bounds.height,
+            left: bounds.left,
+            right: bounds.right,
+            top: bounds.top,
+            width: bounds.width,
+          };
+        }),
+      );
+    const backgroundWidths = backgroundGeometry.map(({ width }) => width);
+    const backgroundHeights = backgroundGeometry.map(({ height }) => height);
+    const backgroundTops = backgroundGeometry.map(({ top }) => top);
+    expect(backgroundHeights.every((height) => height >= 44)).toBe(true);
+    expect(
+      Math.max(...backgroundWidths) - Math.min(...backgroundWidths),
+    ).toBeLessThanOrEqual(1);
+    expect(
+      Math.max(...backgroundHeights) - Math.min(...backgroundHeights),
+    ).toBeLessThanOrEqual(1);
+    expect(
+      Math.max(...backgroundTops) - Math.min(...backgroundTops),
+    ).toBeLessThanOrEqual(1);
+    expect(
+      backgroundGeometry
+        .slice(1)
+        .every(
+          ({ left }, index) => left - backgroundGeometry[index]!.right >= 11,
+        ),
+      `${viewport.width}px background cards must remain separated in one row`,
+    ).toBe(true);
+
+    const outfitGeometry = await page
+      .locator("#main-content .item-rail [role='radio']")
+      .filter({ visible: true })
+      .first()
+      .evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        const panelBounds = element
+          .closest(".item-panel")!
+          .getBoundingClientRect();
+        return {
+          height: bounds.height,
+          panelBottomGap: panelBounds.bottom - bounds.bottom,
+          panelHeight: panelBounds.height,
+          width: bounds.width,
+        };
+      });
+    expect(
+      Math.min(...backgroundWidths),
+      `${viewport.width}px background choices must remain visually dominant`,
+    ).toBeGreaterThanOrEqual(viewport.width < 768 ? 127 : 139);
+    expect(
+      Math.min(...backgroundWidths),
+      `${viewport.width}px backgrounds must be wider than compact outfit cards`,
+    ).toBeGreaterThan(outfitGeometry.width * 1.25);
+    expect(
+      outfitGeometry.width,
+      `${viewport.width}px outfit cards must keep the compact treatment`,
+    ).toBeLessThanOrEqual(112);
+    expect(
+      outfitGeometry.height,
+      `${viewport.width}px outfit cards must remain comfortably tappable`,
+    ).toBeGreaterThanOrEqual(112);
+    if (viewport.width >= 1200) {
+      expect(
+        outfitGeometry.height / outfitGeometry.panelHeight,
+        `${viewport.width}px outfit cards must fill their available wardrobe row`,
+      ).toBeGreaterThan(0.9);
+      expect(
+        outfitGeometry.panelBottomGap,
+        `${viewport.width}px outfit cards must leave minimal lower dead space`,
+      ).toBeLessThanOrEqual(6);
+    }
+
     if (viewport.width >= 768 && viewport.width < 1200) {
       const stageBounds = await page
-        .locator(".studio-stage-panel")
+        .getByRole("region", { name: "Character stage" })
         .filter({ visible: true })
         .evaluate((element) => element.getBoundingClientRect().toJSON());
       expect(stageBounds.top).toBeLessThan(viewport.height * 0.45);
       expect(stageBounds.bottom).toBeLessThanOrEqual(viewport.height + 1);
       expect(stageBounds.height).toBeGreaterThan(viewport.height * 0.55);
       expect(stageBounds.height).toBeLessThan(viewport.height * 0.7);
+    }
+
+    const coreGeometry = await page.evaluate(() => {
+      const bounds = (selector: string) =>
+        document.querySelector(selector)!.getBoundingClientRect().toJSON();
+      return {
+        action: bounds(".studio-action-dock"),
+        stage: bounds(".studio-stage-panel"),
+        wardrobe: bounds(".studio-wardrobe"),
+      };
+    });
+
+    if (viewport.width >= 900) {
+      expect(
+        coreGeometry.stage.right,
+        `${viewport.width}px stage must end before the wardrobe begins`,
+      ).toBeLessThanOrEqual(coreGeometry.wardrobe.left + 1);
+      expect(
+        coreGeometry.action.top,
+        `${viewport.width}px actions must sit below the wardrobe`,
+      ).toBeGreaterThanOrEqual(coreGeometry.wardrobe.bottom - 1);
+      expect(
+        coreGeometry.action.top - coreGeometry.wardrobe.bottom,
+        `${viewport.width}px wardrobe and actions need deliberate separation`,
+      ).toBeGreaterThanOrEqual(24);
+      expect(
+        coreGeometry.action.top - coreGeometry.wardrobe.bottom,
+        `${viewport.width}px wardrobe and actions must remain visually connected`,
+      ).toBeLessThanOrEqual(32);
+      expect(
+        Math.abs(coreGeometry.action.bottom - coreGeometry.stage.bottom),
+        `${viewport.width}px controls must align with the preview bottom edge`,
+      ).toBeLessThanOrEqual(1);
+      expect(
+        coreGeometry.wardrobe.height / coreGeometry.stage.height,
+        `${viewport.width}px wardrobe must fill the control composition`,
+      ).toBeGreaterThan(0.7);
+    } else {
+      expect(coreGeometry.stage.top).toBeLessThan(coreGeometry.wardrobe.top);
+      expect(coreGeometry.wardrobe.top).toBeLessThan(coreGeometry.action.top);
+      expect(
+        coreGeometry.action.top - coreGeometry.wardrobe.bottom,
+        `${viewport.width}px stacked actions need responsive separation`,
+      ).toBeGreaterThanOrEqual(viewport.width >= 768 ? 18 : 14);
+      expect(
+        coreGeometry.action.top - coreGeometry.wardrobe.bottom,
+        `${viewport.width}px stacked actions must remain visually connected`,
+      ).toBeLessThanOrEqual(viewport.width >= 768 ? 22 : 18);
     }
 
     const categoryHeight = await page

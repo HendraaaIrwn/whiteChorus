@@ -2,14 +2,8 @@
 
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check } from "lucide-react";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from "react";
+import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import {
   editorialEase,
@@ -25,14 +19,13 @@ export type StudioPanel = OutfitCategory | "background";
 export type StudioWardrobeItem =
   DressUpAsset | { id: "none"; label: "None"; swatch: "transparent" };
 
-export const studioPanels: StudioPanel[] = [
+export const studioPanels: OutfitCategory[] = [
   "hair",
   "top",
   "bottom",
   "one-piece",
   "shoes",
   "accessory",
-  "background",
 ];
 
 export const studioPanelLabels: Record<StudioPanel, string> = {
@@ -83,7 +76,7 @@ function WardrobeArtwork({
       alt=""
       width={220}
       height={220}
-      sizes="(max-width: 767px) 42vw, 130px"
+      sizes="(max-width: 767px) 42vw, 150px"
       loading={eager ? "eager" : "lazy"}
       onError={() => {
         setFailedPath(previewPath);
@@ -97,49 +90,50 @@ function WardrobeArtwork({
 export function WardrobeDeck({
   activeCharacter,
   activePanel,
+  backgroundItems,
   disabled,
   items,
   onArtworkError,
+  onBackgroundChange,
   onItemChange,
   onPanelChange,
   randomizeCycle,
   randomizing,
+  selectedBackgroundId,
   selectedItemId,
 }: {
   activeCharacter: CharacterId;
   activePanel: StudioPanel;
+  backgroundItems: DressUpAsset[];
   disabled: boolean;
   items: StudioWardrobeItem[];
   onArtworkError(path: string): void;
+  onBackgroundChange(item: StudioWardrobeItem): void;
   onItemChange(item: StudioWardrobeItem): void;
   onPanelChange(panel: StudioPanel): void;
   randomizeCycle: number;
   randomizing: boolean;
+  selectedBackgroundId: string;
   selectedItemId: string | null;
 }) {
   const reduceMotion = useHydratedReducedMotion();
-  const panelRailRef = useRef<HTMLDivElement | null>(null);
   const panelRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const backgroundRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const targetName = activeCharacter === "character-a" ? "EMIR" : "FRISKA";
-
-  const scrollPanelIntoView = useCallback((index: number) => {
-    const rail = panelRailRef.current;
-    const panel = panelRefs.current[index];
-    if (!rail || !panel) return;
-
-    const railBounds = rail.getBoundingClientRect();
-    const panelBounds = panel.getBoundingClientRect();
-    if (panelBounds.left < railBounds.left) {
-      rail.scrollLeft += panelBounds.left - railBounds.left - 2;
-    } else if (panelBounds.right > railBounds.right) {
-      rail.scrollLeft += panelBounds.right - railBounds.right + 2;
-    }
-  }, []);
+  const selectedBackgroundIndex = Math.max(
+    0,
+    backgroundItems.findIndex((item) => item.id === selectedBackgroundId),
+  );
 
   useEffect(() => {
-    scrollPanelIntoView(studioPanels.indexOf(activePanel));
-  }, [activePanel, scrollPanelIntoView]);
+    if (activePanel !== "background") return;
+    backgroundRefs.current[selectedBackgroundIndex]?.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [activePanel, reduceMotion, selectedBackgroundIndex]);
 
   function selectPanel(index: number, focus = false) {
     const wrapped = (index + studioPanels.length) % studioPanels.length;
@@ -147,8 +141,12 @@ export function WardrobeDeck({
     if (!next) return;
     onPanelChange(next);
     if (focus) {
+      panelRefs.current[wrapped]?.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "nearest",
+        inline: "center",
+      });
       panelRefs.current[wrapped]?.focus({ preventScroll: true });
-      scrollPanelIntoView(wrapped);
     }
   }
 
@@ -166,6 +164,36 @@ export function WardrobeDeck({
     if (target === undefined) return;
     event.preventDefault();
     selectPanel(target, true);
+  }
+
+  function selectBackground(index: number, focus = false) {
+    if (!backgroundItems.length) return;
+    const wrapped = (index + backgroundItems.length) % backgroundItems.length;
+    const next = backgroundItems[wrapped];
+    if (!next) return;
+    onBackgroundChange(next);
+    backgroundRefs.current[wrapped]?.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+    if (focus) backgroundRefs.current[wrapped]?.focus();
+  }
+
+  function handleBackgroundKeys(
+    event: KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) {
+    const targets: Record<string, number> = {
+      ArrowLeft: index - 1,
+      ArrowRight: index + 1,
+      Home: 0,
+      End: backgroundItems.length - 1,
+    };
+    const target = targets[event.key];
+    if (target === undefined) return;
+    event.preventDefault();
+    selectBackground(target, true);
   }
 
   function selectRailItem(index: number, focus = false) {
@@ -202,7 +230,7 @@ export function WardrobeDeck({
       className="studio-wardrobe"
       aria-label="Dress-up controls"
       aria-disabled={disabled || undefined}
-      initial={reduceMotion ? false : { opacity: 0, x: 28 }}
+      initial={false}
       animate={{ opacity: 1, x: 0 }}
       transition={{
         delay: reduceMotion ? 0 : 0.34,
@@ -211,16 +239,86 @@ export function WardrobeDeck({
       }}
     >
       <div className="studio-wardrobe__heading">
-        <span className="studio-kicker">
-          WARDROBE ·{" "}
-          {activePanel === "background" ? "SHARED SCENE" : targetName}
-        </span>
+        <span className="studio-kicker">WARDROBE · {targetName}</span>
         <h2>{studioPanelLabels[activePanel]}</h2>
         <StitchedArrow aria-hidden="true" />
       </div>
 
+      <section
+        id="studio-background-panel"
+        className="background-carousel"
+        aria-label="Background carousel"
+      >
+        <button
+          className="background-carousel__control"
+          type="button"
+          disabled={disabled}
+          aria-label="Previous background"
+          onClick={() => selectBackground(selectedBackgroundIndex - 1)}
+        >
+          <ChevronLeft aria-hidden="true" />
+        </button>
+        <div
+          className="background-carousel__rail"
+          role="radiogroup"
+          aria-label="Background choices"
+        >
+          {backgroundItems.map((item, index) => {
+            const selected = item.id === selectedBackgroundId;
+            return (
+              <motion.button
+                ref={(node) => {
+                  backgroundRefs.current[index] = node;
+                }}
+                key={item.id}
+                className={selected ? "is-selected" : ""}
+                type="button"
+                disabled={disabled}
+                role="radio"
+                aria-checked={selected}
+                aria-label={`${selected ? "Selected: " : "Choose "}${item.label} background`}
+                tabIndex={selected ? 0 : -1}
+                onClick={() => selectBackground(index)}
+                onKeyDown={(event) => handleBackgroundKeys(event, index)}
+                whileHover={reduceMotion ? undefined : { y: -5, scale: 1.03 }}
+                whileTap={reduceMotion ? undefined : { scale: 0.97 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 420,
+                  damping: 30,
+                  mass: 0.7,
+                }}
+                data-cursor="DRESS"
+              >
+                <WardrobeArtwork
+                  eager
+                  item={item}
+                  onArtworkError={onArtworkError}
+                />
+                {selected ? (
+                  <span
+                    className="background-carousel__check"
+                    aria-hidden="true"
+                  >
+                    <Check />
+                  </span>
+                ) : null}
+              </motion.button>
+            );
+          })}
+        </div>
+        <button
+          className="background-carousel__control"
+          type="button"
+          disabled={disabled}
+          aria-label="Next background"
+          onClick={() => selectBackground(selectedBackgroundIndex + 1)}
+        >
+          <ChevronRight aria-hidden="true" />
+        </button>
+      </section>
+
       <div
-        ref={panelRailRef}
         className="category-tabs"
         role="tablist"
         aria-label="Outfit categories"
@@ -237,6 +335,7 @@ export function WardrobeDeck({
               type="button"
               disabled={disabled}
               role="tab"
+              aria-label={studioPanelLabels[panel]}
               aria-selected={selected}
               aria-controls="studio-item-panel"
               tabIndex={selected ? 0 : -1}
@@ -258,94 +357,104 @@ export function WardrobeDeck({
         })}
       </div>
 
-      <section
-        id="studio-item-panel"
-        className="item-panel"
-        role="tabpanel"
-        aria-labelledby={`studio-category-${activePanel}`}
-      >
-        <motion.div
-          key={`${activePanel}:${activeCharacter}:${randomizeCycle}`}
-          className="item-rail"
-          data-randomizing={randomizing || undefined}
-          role="radiogroup"
-          aria-label={`${studioPanelLabels[activePanel]} items`}
-          initial={reduceMotion ? false : { opacity: 0, x: 18 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{
-            duration: reduceMotion ? 0 : editorialMotionDurations.interaction,
-            ease: editorialEase,
-          }}
+      {activePanel !== "background" ? (
+        <section
+          id="studio-item-panel"
+          className="item-panel"
+          role="tabpanel"
+          aria-labelledby={`studio-category-${activePanel}`}
         >
-          <AnimatePresence initial={false} mode="popLayout">
-            {items.map((item, index) => {
-              const selected =
-                item.id === "none"
-                  ? selectedItemId === null
-                  : selectedItemId === item.id;
-              const noCurrentSelection = selectedItemId === null;
-              const accessibleLabel = `${selected ? "Selected: " : "Choose "}${item.label}${activePanel === "background" ? " background" : ""}`;
-              return (
-                <motion.button
-                  ref={(node) => {
-                    itemRefs.current[index] = node;
-                  }}
-                  key={item.id}
-                  type="button"
-                  disabled={disabled}
-                  role="radio"
-                  aria-checked={selected}
-                  aria-label={accessibleLabel}
-                  className={selected ? "is-selected" : ""}
-                  tabIndex={
-                    selected || (noCurrentSelection && index === 0) ? 0 : -1
-                  }
-                  layout={reduceMotion ? false : "position"}
-                  initial={
-                    reduceMotion ? false : { opacity: 0, y: 9, scale: 0.96 }
-                  }
-                  animate={{
-                    opacity: 1,
-                    y: selected && !reduceMotion ? -3 : 0,
-                    scale: 1,
-                  }}
-                  exit={
-                    reduceMotion ? undefined : { opacity: 0, y: 5, scale: 0.96 }
-                  }
-                  transition={{ duration: reduceMotion ? 0 : 0.2 }}
-                  onClick={() => selectRailItem(index)}
-                  onKeyDown={(event) => handleItemKeys(event, index)}
-                  data-cursor="DRESS"
-                >
-                  <span className="item-rail__index">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <WardrobeArtwork
-                    eager={index < 3}
-                    item={item}
-                    onArtworkError={onArtworkError}
-                  />
-                  <strong>{item.label.toUpperCase()}</strong>
-                  {selected ? (
-                    <motion.span
-                      className="item-check"
-                      layoutId="studio-selected-item"
-                      transition={{
-                        type: "spring",
-                        stiffness: 420,
-                        damping: 30,
-                      }}
-                      aria-hidden="true"
-                    >
-                      <Check />
-                    </motion.span>
-                  ) : null}
-                </motion.button>
-              );
-            })}
-          </AnimatePresence>
-        </motion.div>
-      </section>
+          <motion.div
+            key={`${activePanel}:${activeCharacter}:${randomizeCycle}`}
+            className="item-rail"
+            data-randomizing={randomizing || undefined}
+            role="radiogroup"
+            aria-label={`${studioPanelLabels[activePanel]} items`}
+            initial={false}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{
+              duration: reduceMotion ? 0 : editorialMotionDurations.interaction,
+              ease: editorialEase,
+            }}
+          >
+            <AnimatePresence initial={false} mode="popLayout">
+              {items.map((item, index) => {
+                const selected =
+                  item.id === "none"
+                    ? selectedItemId === null
+                    : selectedItemId === item.id;
+                const noCurrentSelection = selectedItemId === null;
+                const accessibleLabel = `${selected ? "Selected: " : "Choose "}${item.label}`;
+                return (
+                  <motion.button
+                    ref={(node) => {
+                      itemRefs.current[index] = node;
+                    }}
+                    key={item.id}
+                    type="button"
+                    disabled={disabled}
+                    role="radio"
+                    aria-checked={selected}
+                    aria-label={accessibleLabel}
+                    className={selected ? "is-selected" : ""}
+                    tabIndex={
+                      selected || (noCurrentSelection && index === 0) ? 0 : -1
+                    }
+                    layout={reduceMotion ? false : "position"}
+                    initial={
+                      reduceMotion ? false : { opacity: 0, y: 7, scale: 0.97 }
+                    }
+                    animate={{
+                      opacity: 1,
+                      y: selected && !reduceMotion ? -2 : 0,
+                      scale: 1,
+                    }}
+                    whileHover={
+                      reduceMotion ? undefined : { y: -5, scale: 1.025 }
+                    }
+                    exit={
+                      reduceMotion
+                        ? undefined
+                        : { opacity: 0, y: 4, scale: 0.97 }
+                    }
+                    transition={{
+                      duration: reduceMotion ? 0 : 0.22,
+                      ease: editorialEase,
+                    }}
+                    onClick={() => selectRailItem(index)}
+                    onKeyDown={(event) => handleItemKeys(event, index)}
+                    data-cursor="DRESS"
+                  >
+                    <span className="item-rail__index">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <WardrobeArtwork
+                      eager={index < 3}
+                      item={item}
+                      onArtworkError={onArtworkError}
+                    />
+                    <strong>{item.label.toUpperCase()}</strong>
+                    {selected ? (
+                      <motion.span
+                        className="item-check"
+                        layoutId="studio-selected-item"
+                        transition={{
+                          type: "spring",
+                          stiffness: 420,
+                          damping: 30,
+                        }}
+                        aria-hidden="true"
+                      >
+                        <Check />
+                      </motion.span>
+                    ) : null}
+                  </motion.button>
+                );
+              })}
+            </AnimatePresence>
+          </motion.div>
+        </section>
+      ) : null}
     </motion.section>
   );
 }

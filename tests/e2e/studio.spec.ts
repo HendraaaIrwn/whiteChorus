@@ -48,6 +48,127 @@ test("keeps the editorial landing content usable without legacy runtimes", async
   expect(pageErrors).toEqual([]);
 });
 
+test("hydrates the Studio footer scroll target without Motion errors", async ({
+  page,
+}) => {
+  const targetRefErrors: string[] = [];
+  page.on("pageerror", (error) => {
+    if (error.message.includes("Target ref is defined but not hydrated")) {
+      targetRefErrors.push(error.message);
+    }
+  });
+
+  await page.goto("/studio");
+  await expect(page.getByRole("contentinfo")).toBeVisible();
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
+
+  expect(targetRefErrors).toEqual([]);
+});
+
+test("keeps the Studio CTA blue wave spaced without moving the white wave", async ({
+  page,
+}) => {
+  await page.goto("/studio");
+
+  for (const viewport of [
+    { width: 320, height: 568 },
+    { width: 390, height: 844 },
+    { width: 768, height: 1024 },
+    { width: 1440, height: 1000 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const footer = page
+      .locator(".site-footer--studio")
+      .filter({ visible: true });
+    await footer.scrollIntoViewIfNeeded();
+
+    const link = footer.getByRole("link", {
+      name: /ENTER THE HALL OF FAME ↗/i,
+    });
+    const beforeHover = await footer.evaluate((element) => {
+      const linkElement = element.querySelector<HTMLElement>(
+        ".studio-editorial-footer__link",
+      )!;
+      const heading = linkElement.getBoundingClientRect();
+      const wave = element
+        .querySelector(".studio-editorial-footer__doodle--wave")!
+        .getBoundingClientRect();
+      const linkStyle = getComputedStyle(linkElement);
+      const layer = element.querySelector<HTMLElement>(
+        ".studio-editorial-footer__doodles",
+      )!;
+      const doodles = [...layer.querySelectorAll("svg")];
+
+      return {
+        doodleCount: doodles.length,
+        doodlesHaveSingleOpenPath: doodles.every(
+          (doodle) =>
+            doodle.querySelectorAll("path").length === 1 &&
+            !doodle.querySelector("polygon, polyline, line"),
+        ),
+        headingBounds: heading.toJSON(),
+        headingFontSize: Number.parseFloat(linkStyle.fontSize),
+        headingLineHeight: linkStyle.lineHeight,
+        headingLines: linkElement.querySelectorAll("span").length,
+        textDecorationColor: linkStyle.textDecorationColor,
+        textDecorationLine: linkStyle.textDecorationLine,
+        textUnderlineOffset: Number.parseFloat(linkStyle.textUnderlineOffset),
+        whiteWaveBounds: wave.toJSON(),
+        layerPointerEvents: getComputedStyle(layer).pointerEvents,
+        layerZIndex: Number.parseInt(getComputedStyle(layer).zIndex, 10),
+        linkZIndex: Number.parseInt(linkStyle.zIndex, 10),
+      };
+    });
+
+    expect(beforeHover.doodleCount).toBe(3);
+    expect(beforeHover.doodlesHaveSingleOpenPath).toBe(true);
+    expect(beforeHover.textDecorationLine).toContain("underline");
+    expect(beforeHover.textUnderlineOffset).toBeGreaterThanOrEqual(16);
+    expect(beforeHover.textUnderlineOffset).toBeLessThanOrEqual(24);
+    expect(beforeHover.layerPointerEvents).toBe("none");
+    expect(beforeHover.layerZIndex).toBeLessThan(beforeHover.linkZIndex);
+
+    await expect(link).toBeVisible();
+    await link.hover();
+
+    const afterHover = await footer.evaluate((element) => {
+      const linkElement = element.querySelector<HTMLElement>(
+        ".studio-editorial-footer__link",
+      )!;
+      const heading = linkElement.getBoundingClientRect();
+      const wave = element
+        .querySelector(".studio-editorial-footer__doodle--wave")!
+        .getBoundingClientRect();
+      const linkStyle = getComputedStyle(linkElement);
+
+      return {
+        headingBounds: heading.toJSON(),
+        headingFontSize: Number.parseFloat(linkStyle.fontSize),
+        headingLineHeight: linkStyle.lineHeight,
+        headingLines: linkElement.querySelectorAll("span").length,
+        textDecorationColor: linkStyle.textDecorationColor,
+        textUnderlineOffset: Number.parseFloat(linkStyle.textUnderlineOffset),
+        whiteWaveBounds: wave.toJSON(),
+      };
+    });
+
+    expect(afterHover.textDecorationColor).not.toBe("rgba(0, 0, 0, 0)");
+    expect(afterHover.textUnderlineOffset).toBe(
+      beforeHover.textUnderlineOffset,
+    );
+    expect(afterHover.headingBounds).toEqual(beforeHover.headingBounds);
+    expect(afterHover.headingFontSize).toBe(beforeHover.headingFontSize);
+    expect(afterHover.headingLineHeight).toBe(beforeHover.headingLineHeight);
+    expect(afterHover.headingLines).toBe(beforeHover.headingLines);
+    expect(afterHover.whiteWaveBounds).toEqual(beforeHover.whiteWaveBounds);
+  }
+});
+
 test("shows and refreshes the current daily ranking", async ({ page }) => {
   await page.route("**/api/daily-winners", async (route) => {
     await route.fulfill({
@@ -206,7 +327,10 @@ test("enters silently and restores a saved studio draft", async ({ page }) => {
 
   await expect(page).toHaveURL(/\/studio$/);
   await expect(
-    page.getByRole("heading", { name: "STYLE EMIR & FRISKA" }),
+    page.getByRole("heading", {
+      level: 1,
+      name: "YOUR STAGE · TWO VOICES",
+    }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "DRESS EMIR" }).locator("img"),
@@ -258,6 +382,418 @@ test("enters silently and restores a saved studio draft", async ({ page }) => {
     .toContain('"topId":"a-top-01"');
 });
 
+test("uses straight, uniform geometry for the styling workspace", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/studio");
+
+  await expect(
+    page.getByRole("region", { name: "Character stage" }),
+  ).toBeVisible();
+
+  const geometry = await page.evaluate(() => {
+    const visible = (selector: string) =>
+      [...document.querySelectorAll(selector)].find((element) => {
+        const bounds = element.getBoundingClientRect();
+        return bounds.width > 0 && bounds.height > 0;
+      })!;
+    const rotation = (element: Element) => {
+      const transform = getComputedStyle(element).transform;
+      if (transform === "none") return 0;
+      const matrix = new DOMMatrixReadOnly(transform);
+      return Math.atan2(matrix.b, matrix.a);
+    };
+    const support = visible(".studio-stage-panel");
+    const stage = support.querySelector(".studio-stage__art")!;
+    const rail = visible(".item-rail");
+    const cards = [...rail.querySelectorAll("button")];
+    const switchers = [
+      ...support.querySelectorAll(".character-switcher button"),
+    ];
+    const actionDock = visible(".studio-action-dock");
+    const actions = [...actionDock.querySelectorAll(".studio-action")];
+
+    return {
+      stage: {
+        borderRadius: getComputedStyle(stage).borderRadius,
+        clipPath: getComputedStyle(stage).clipPath,
+        rotation: rotation(stage),
+        supportRotation: rotation(support),
+      },
+      cards: cards.map((card) => ({
+        borderRadius: getComputedStyle(card).borderRadius,
+        height: card.getBoundingClientRect().height,
+        rotation: rotation(card),
+        width: card.getBoundingClientRect().width,
+      })),
+      switchRotations: switchers.map(rotation),
+      actions: actions.map((action) => ({
+        borderRadius: getComputedStyle(action).borderRadius,
+        hasHomeAction: action.classList.contains("home-action"),
+        labelCount: action.querySelectorAll(".button__label-stack > span")
+          .length,
+        rotation: rotation(action),
+      })),
+    };
+  });
+
+  expect(geometry.stage.borderRadius).toBe("32px");
+  expect(geometry.stage.clipPath).toBe("none");
+  expect(Math.abs(geometry.stage.rotation)).toBeLessThan(0.001);
+  expect(Math.abs(geometry.stage.supportRotation)).toBeLessThan(0.001);
+
+  expect(geometry.cards.length).toBeGreaterThan(1);
+  expect(
+    new Set(geometry.cards.map(({ borderRadius }) => borderRadius)),
+  ).toEqual(new Set(["18px"]));
+  expect(
+    Math.max(...geometry.cards.map(({ width }) => width)) -
+      Math.min(...geometry.cards.map(({ width }) => width)),
+  ).toBeLessThanOrEqual(1);
+  expect(
+    Math.max(...geometry.cards.map(({ height }) => height)) -
+      Math.min(...geometry.cards.map(({ height }) => height)),
+  ).toBeLessThanOrEqual(1);
+  expect(
+    geometry.cards.every(({ rotation }) => Math.abs(rotation) < 0.001),
+  ).toBe(true);
+  expect(
+    geometry.switchRotations.every((rotation) => Math.abs(rotation) < 0.001),
+  ).toBe(true);
+  expect(geometry.actions).toHaveLength(3);
+  expect(
+    geometry.actions.every(
+      ({ borderRadius, hasHomeAction, labelCount, rotation }) =>
+        borderRadius === "0px" &&
+        hasHomeAction &&
+        labelCount === 2 &&
+        Math.abs(rotation) < 0.001,
+    ),
+  ).toBe(true);
+});
+
+test("uses the compact wardrobe hierarchy and text-only category tabs", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/studio");
+  await page.getByRole("radio", { name: /choose hair 01/i }).click();
+  await expect(
+    page.getByRole("radio", { name: /selected: hair 01/i }),
+  ).toHaveAttribute("aria-checked", "true");
+
+  const surfaces = await page.evaluate(() => {
+    const wardrobe = document.querySelector<HTMLElement>(".studio-wardrobe")!;
+    const tabs = wardrobe.querySelector<HTMLElement>(".category-tabs")!;
+    const activeTab = tabs.querySelector<HTMLElement>(
+      '[role="tab"][aria-selected="true"]',
+    )!;
+    const inactiveTab = tabs.querySelector<HTMLElement>(
+      '[role="tab"][aria-selected="false"]',
+    )!;
+    const activeIndicator = activeTab.querySelector<HTMLElement>(
+      ".category-tab__indicator",
+    )!;
+    const selectedCard = wardrobe.querySelector<HTMLElement>(
+      '.item-rail [role="radio"][aria-checked="true"]',
+    )!;
+    const unselectedCard = wardrobe.querySelector<HTMLElement>(
+      '.item-rail [role="radio"][aria-checked="false"]',
+    )!;
+    const pageSurface = document.querySelector<HTMLElement>(".studio-page")!;
+    const heading = wardrobe.querySelector<HTMLElement>(
+      ".studio-wardrobe__heading",
+    )!;
+    const backgroundCarousel = wardrobe.querySelector<HTMLElement>(
+      ".background-carousel",
+    )!;
+    const itemPanel = wardrobe.querySelector<HTMLElement>(".item-panel")!;
+
+    const style = (element: Element) => getComputedStyle(element);
+
+    return {
+      pageBackground: style(pageSurface).backgroundColor,
+      panelBackground: style(wardrobe).backgroundColor,
+      panelBorderStyle: style(wardrobe).borderStyle,
+      panelBorderWidth: style(wardrobe).borderWidth,
+      panelRadius: style(wardrobe).borderRadius,
+      panelLayer: style(wardrobe).boxShadow,
+      tabRailBackground: style(tabs).backgroundColor,
+      tabRailBorderWidth: style(tabs).borderWidth,
+      activeTabBackground: style(activeTab).backgroundColor,
+      inactiveTabBackground: style(inactiveTab).backgroundColor,
+      activeTabColor: style(activeTab).color,
+      activeTabBorderStyle: style(activeTab).borderStyle,
+      activeTabBorderWidth: style(activeTab).borderWidth,
+      inactiveTabColor: style(inactiveTab).color,
+      activeIndicatorBorderColor: style(activeIndicator).borderTopColor,
+      activeIndicatorBorderStyle: style(activeIndicator).borderTopStyle,
+      activeIndicatorBorderWidth: style(activeIndicator).borderTopWidth,
+      selectedCardBackground: style(selectedCard).backgroundColor,
+      unselectedCardBackground: style(unselectedCard).backgroundColor,
+      unselectedCardBorderStyle: style(unselectedCard).borderStyle,
+      unselectedCardBorderWidth: style(unselectedCard).borderWidth,
+      tabCount: tabs.querySelectorAll('[role="tab"]').length,
+      hierarchy: [heading, backgroundCarousel, tabs, itemPanel].map(
+        (element) => element.getBoundingClientRect().top,
+      ),
+    };
+  });
+
+  expect(surfaces.panelBackground).not.toBe(surfaces.pageBackground);
+  expect(surfaces.panelBorderStyle).toBe("solid");
+  expect(surfaces.panelBorderWidth).toBe("1px");
+  expect(surfaces.panelRadius).toBe("22px");
+  expect(surfaces.panelLayer).not.toBe("none");
+  expect(surfaces.tabRailBackground).not.toBe(surfaces.panelBackground);
+  expect(surfaces.tabRailBorderWidth).toBe("0px");
+  expect(surfaces.activeTabBackground).toBe(surfaces.inactiveTabBackground);
+  expect(surfaces.activeTabBackground).toBe("rgba(0, 0, 0, 0)");
+  expect(surfaces.activeTabColor).not.toBe(surfaces.inactiveTabColor);
+  expect(surfaces.activeTabBorderStyle).toBe("none");
+  expect(surfaces.activeTabBorderWidth).toBe("0px");
+  expect(surfaces.activeIndicatorBorderStyle).toBe("dashed");
+  expect(surfaces.activeIndicatorBorderWidth).toBe("3px");
+  expect(surfaces.activeIndicatorBorderColor).not.toBe("rgba(0, 0, 0, 0)");
+  expect(surfaces.unselectedCardBackground).not.toBe(surfaces.panelBackground);
+  expect(surfaces.selectedCardBackground).not.toBe(
+    surfaces.unselectedCardBackground,
+  );
+  expect(surfaces.unselectedCardBorderStyle).toBe("solid");
+  expect(surfaces.unselectedCardBorderWidth).toBe("1px");
+  expect(surfaces.tabCount).toBe(6);
+  expect(surfaces.hierarchy).toEqual(
+    [...surfaces.hierarchy].sort((a, b) => a - b),
+  );
+  await expect(
+    page.locator("#main-content").getByText("WARDROBE · EMIR", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("DRAFT SAVES AUTOMATICALLY")).toHaveCount(0);
+  await expect(
+    page.locator(".background-carousel__rail").getByRole("radio"),
+  ).toHaveCount(5);
+});
+
+test("gives inactive category tabs restrained palette hover feedback", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "Fine-pointer hover feedback runs in desktop Chromium.",
+  );
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/studio");
+
+  const activeTab = page.getByRole("tab", { name: "HAIR" });
+  const inactiveTab = page.getByRole("tab", { name: "TOP" });
+  const activeColor = await activeTab.evaluate(
+    (element) => getComputedStyle(element).color,
+  );
+  const inactiveColor = await inactiveTab.evaluate(
+    (element) => getComputedStyle(element).color,
+  );
+
+  await inactiveTab.hover();
+
+  await expect
+    .poll(() =>
+      inactiveTab.evaluate((element) => getComputedStyle(element).color),
+    )
+    .not.toBe(inactiveColor);
+  await expect
+    .poll(() =>
+      inactiveTab.evaluate(
+        (element) =>
+          new DOMMatrixReadOnly(getComputedStyle(element).transform).m42,
+      ),
+    )
+    .toBeLessThan(-0.9);
+  await expect(activeTab).toHaveCSS("color", activeColor);
+  await expect(activeTab.locator(".category-tab__indicator")).toHaveCSS(
+    "border-top-style",
+    "dashed",
+  );
+});
+
+test("keeps the background carousel available without duplicating its cards", async ({
+  page,
+}) => {
+  await page.goto("/studio");
+
+  const hairTab = page.getByRole("tab", { name: "HAIR" });
+  await expect(hairTab).toHaveAttribute("aria-selected", "true");
+  await page
+    .getByRole("radio", { name: /choose mint room background/i })
+    .click();
+  await expect(hairTab).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("heading", { name: "HAIR" })).toBeVisible();
+  await expect(
+    page.locator('.studio-stage__background[src*="background-02.webp"]'),
+  ).toBeVisible();
+  await expect(page.getByRole("tab", { name: "BACKGROUND" })).toHaveCount(0);
+  await expect(
+    page.locator("#main-content #studio-item-panel").filter({ visible: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("radio", { name: /background/i }),
+    "background choices should exist only in the permanent carousel",
+  ).toHaveCount(5);
+});
+
+test("gives background cards polished hover and press feedback", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "Pointer choreography runs in desktop Chromium.",
+  );
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/studio");
+
+  const card = page
+    .locator("#main-content .background-carousel__rail [role='radio']")
+    .filter({ visible: true })
+    .nth(1);
+  await expect(card).toHaveAccessibleName(/choose mint room background/i);
+  const before = await card.evaluate((element) => ({
+    border: getComputedStyle(element).borderColor,
+  }));
+
+  await card.hover();
+  await expect
+    .poll(() =>
+      card.evaluate(
+        (element) =>
+          new DOMMatrixReadOnly(getComputedStyle(element).transform).a,
+      ),
+    )
+    .toBeGreaterThan(1.02);
+  await expect
+    .poll(() =>
+      card.evaluate(
+        (element) =>
+          new DOMMatrixReadOnly(getComputedStyle(element).transform).m42,
+      ),
+    )
+    .toBeLessThanOrEqual(-4);
+
+  const hovered = await card.evaluate((element) => ({
+    border: getComputedStyle(element).borderColor,
+    matrix: new DOMMatrixReadOnly(getComputedStyle(element).transform),
+  }));
+  expect(hovered.border).not.toBe(before.border);
+  expect(hovered.matrix.a).toBeGreaterThan(1.02);
+  expect(hovered.matrix.m42).toBeLessThanOrEqual(-4);
+
+  const bounds = await card.boundingBox();
+  expect(bounds).not.toBeNull();
+  await page.mouse.move(
+    bounds!.x + bounds!.width / 2,
+    bounds!.y + bounds!.height / 2,
+  );
+  await page.mouse.down();
+  await expect
+    .poll(() =>
+      card.evaluate(
+        (element) =>
+          new DOMMatrixReadOnly(getComputedStyle(element).transform).a,
+      ),
+    )
+    .toBeLessThan(1);
+  await page.mouse.up();
+  await expect(card).toHaveAttribute("aria-checked", "true");
+});
+
+test("gives wardrobe cards a restrained fine-pointer hover", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "Hover choreography runs in desktop Chromium.",
+  );
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/studio");
+
+  const card = page.getByRole("radio", { name: /choose hair 01/i });
+  const before = await card.evaluate((element) => ({
+    border: getComputedStyle(element).borderColor,
+    transform: getComputedStyle(element).transform,
+  }));
+  await card.hover();
+  await expect
+    .poll(() => card.evaluate((element) => getComputedStyle(element).transform))
+    .not.toBe(before.transform);
+  const hovered = await card.evaluate((element) => ({
+    border: getComputedStyle(element).borderColor,
+    bounds: element.getBoundingClientRect().toJSON(),
+    matrix: new DOMMatrixReadOnly(getComputedStyle(element).transform),
+    railBounds: element.parentElement!.getBoundingClientRect().toJSON(),
+    zIndex: getComputedStyle(element).zIndex,
+  }));
+  expect(hovered.border).not.toBe(before.border);
+  expect(hovered.matrix.a).toBeGreaterThan(1);
+  expect(hovered.matrix.m42).toBeLessThan(0);
+  expect(hovered.bounds.top).toBeGreaterThanOrEqual(hovered.railBounds.top);
+  expect(hovered.bounds.right).toBeLessThanOrEqual(hovered.railBounds.right);
+  expect(hovered.bounds.bottom).toBeLessThanOrEqual(hovered.railBounds.bottom);
+  expect(hovered.bounds.left).toBeGreaterThanOrEqual(hovered.railBounds.left);
+  expect(Number(hovered.zIndex)).toBeGreaterThanOrEqual(2);
+});
+
+test("matches the homepage hero CTA label motion", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "Hover choreography runs in desktop Chromium.",
+  );
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/studio");
+
+  const randomize = page.getByRole("button", { name: "RANDOMIZE ALL" });
+  const reset = page.getByRole("button", { name: "RESET ALL" });
+  const publish = page.getByRole("button", {
+    name: "PUBLISH TO HALL OF FAME",
+  });
+
+  await randomize.click();
+  await expect(publish).toBeEnabled();
+  await expect(randomize).toBeEnabled();
+
+  for (const action of [randomize, reset, publish]) {
+    await action.hover();
+    await expect
+      .poll(() =>
+        action.evaluate((element) => {
+          const labels = element.querySelectorAll<HTMLElement>(
+            ".button__label-stack > span",
+          );
+          return [...labels].map((label) => {
+            const transform = getComputedStyle(label).transform;
+            return transform === "none"
+              ? 0
+              : new DOMMatrixReadOnly(transform).m42;
+          });
+        }),
+      )
+      .toEqual([expect.any(Number), 0]);
+    const labelOffsets = await action.evaluate((element) => {
+      const labels = element.querySelectorAll<HTMLElement>(
+        ".button__label-stack > span",
+      );
+      return [...labels].map((label) => {
+        const transform = getComputedStyle(label).transform;
+        return transform === "none" ? 0 : new DOMMatrixReadOnly(transform).m42;
+      });
+    });
+    expect(labelOffsets[0]).toBeLessThan(-40);
+    expect(Math.abs(labelOffsets[1] ?? Number.POSITIVE_INFINITY)).toBeLessThan(
+      1,
+    );
+  }
+});
+
 test("keeps both characters visible while dressing only the active voice", async ({
   page,
 }) => {
@@ -300,8 +836,6 @@ test("supports keyboard navigation for backgrounds and category tabs", async ({
 }) => {
   await page.goto("/studio");
 
-  await page.getByRole("tab", { name: "BACKGROUND" }).click();
-
   const firstBackground = page.getByRole("radio", {
     name: /selected: dance floor background/i,
   });
@@ -324,11 +858,11 @@ test("supports keyboard navigation for backgrounds and category tabs", async ({
   const hairTab = page.getByRole("tab", { name: "HAIR" });
   await hairTab.focus();
   await page.keyboard.press("End");
-  const backgroundTab = page.getByRole("tab", { name: "BACKGROUND" });
-  await expect(backgroundTab).toHaveAttribute("aria-selected", "true");
+  const accessoryTab = page.getByRole("tab", { name: "ACCESSORIES" });
+  await expect(accessoryTab).toHaveAttribute("aria-selected", "true");
   await expect
     .poll(() =>
-      backgroundTab.evaluate((element) => {
+      accessoryTab.evaluate((element) => {
         const tab = element.getBoundingClientRect();
         const rail = element.parentElement!.getBoundingClientRect();
         return tab.left >= rail.left - 1 && tab.right <= rail.right + 1;

@@ -2,18 +2,22 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Dices, RotateCcw, Sparkles } from "lucide-react";
 
 import { editorialEase } from "@/components/motion/motion-presets";
 import { useHydratedReducedMotion } from "@/components/motion/use-hydrated-reduced-motion";
 import { Button } from "@/components/ui/button";
 import { TurnstileChallenge } from "@/features/abuse-protection/turnstile-challenge";
-import { Magnetic } from "@/features/home/home-motion";
+
+export type StudioFeedback = {
+  message: string;
+  tone: "polite" | "error";
+};
 
 export function StudioActionDock({
   challengeRequired,
   challengeVersion,
   controlsDisabled,
+  feedback,
   onPublish,
   onRandomize,
   onReset,
@@ -22,11 +26,11 @@ export function StudioActionDock({
   publishedUrl,
   publishing,
   randomizing,
-  status,
 }: {
   challengeRequired: boolean;
   challengeVersion: number;
   controlsDisabled: boolean;
+  feedback: StudioFeedback;
   onPublish(): void;
   onRandomize(): void;
   onReset(): void;
@@ -35,7 +39,6 @@ export function StudioActionDock({
   publishedUrl: string | null;
   publishing: boolean;
   randomizing: boolean;
-  status: string;
 }) {
   const reduceMotion = useHydratedReducedMotion();
 
@@ -43,7 +46,7 @@ export function StudioActionDock({
     <motion.aside
       className="studio-action-dock"
       aria-label="Studio actions"
-      initial={reduceMotion ? false : { opacity: 0, y: 24 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
       transition={{
         delay: reduceMotion ? 0 : 0.52,
@@ -51,42 +54,46 @@ export function StudioActionDock({
         ease: editorialEase,
       }}
     >
-      <div className="publish-status" aria-live="polite" aria-atomic="true">
-        <span>DRAFT SAVES AUTOMATICALLY</span>
-        <AnimatePresence initial={false} mode="wait">
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {feedback.tone === "polite" ? feedback.message : ""}
+      </span>
+
+      <AnimatePresence initial={false} mode="wait">
+        {feedback.tone === "error" ? (
           <motion.p
-            key={status}
+            key={feedback.message}
+            className="studio-feedback studio-feedback--error"
+            role="alert"
             initial={reduceMotion ? false : { opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
             transition={{ duration: reduceMotion ? 0 : 0.18 }}
           >
-            {status}
+            {feedback.message}
           </motion.p>
-        </AnimatePresence>
-      </div>
+        ) : null}
+      </AnimatePresence>
 
       <div className="studio-secondary-actions">
-        <Magnetic>
-          <Button
-            className="studio-action studio-action--randomize"
-            variant="secondary"
-            disabled={controlsDisabled || randomizing}
-            replacementLabel="MIX IT UP ↗"
-            onClick={onRandomize}
-            data-cursor="DRESS"
-          >
-            <Dices aria-hidden="true" /> RANDOMIZE ALL
-          </Button>
-        </Magnetic>
         <Button
-          className="studio-action studio-action--reset"
+          className="home-action studio-action studio-action--randomize"
+          variant="secondary"
+          disabled={controlsDisabled || randomizing}
+          replacementLabel="MIX IT UP ↗"
+          onClick={onRandomize}
+          data-cursor="DRESS"
+        >
+          RANDOMIZE ALL
+        </Button>
+        <Button
+          className="home-action studio-action studio-action--reset"
           variant="tertiary"
           disabled={controlsDisabled}
+          replacementLabel="START OVER ↗"
           onClick={onReset}
           data-cursor="SELECT"
         >
-          <RotateCcw aria-hidden="true" /> RESET ALL
+          RESET ALL
         </Button>
       </div>
 
@@ -111,19 +118,17 @@ export function StudioActionDock({
       </AnimatePresence>
 
       <div className="studio-publish-action">
-        <Magnetic>
-          <Button
-            className="studio-action studio-action--publish"
-            size="lg"
-            loading={publishing}
-            disabled={publishDisabled}
-            replacementLabel="ENTER THE HALL ↗"
-            onClick={onPublish}
-            data-cursor="SAVE"
-          >
-            <Sparkles aria-hidden="true" /> PUBLISH TO HALL OF FAME
-          </Button>
-        </Magnetic>
+        <Button
+          className="home-action home-action--primary studio-action studio-action--publish"
+          size="lg"
+          loading={publishing}
+          disabled={publishDisabled}
+          replacementLabel="ENTER THE HALL ↗"
+          onClick={onPublish}
+          data-cursor="SAVE"
+        >
+          PUBLISH TO HALL OF FAME
+        </Button>
         {publishedUrl ? (
           <Link
             className="studio-view-look"

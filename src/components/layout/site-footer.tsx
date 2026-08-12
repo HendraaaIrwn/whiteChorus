@@ -8,13 +8,37 @@ import { useRef } from "react";
 import { editorialEase } from "@/components/motion/motion-presets";
 import { useHydratedReducedMotion } from "@/components/motion/use-hydrated-reduced-motion";
 import { MusicControl } from "@/features/audio/music-control";
-import {
-  ChorusWave,
-  Sparkle,
-  ThreadStroke,
-} from "@/features/home/home-doodles";
+import { ChorusWave, Sparkle } from "@/features/home/home-doodles";
 
 const footerEase = [0.22, 1, 0.36, 1] as const;
+
+function StudioFooterDoodles() {
+  return (
+    <div className="studio-editorial-footer__doodles" aria-hidden="true">
+      <svg
+        className="studio-editorial-footer__doodle studio-editorial-footer__doodle--wave"
+        viewBox="0 0 620 160"
+        fill="none"
+      >
+        <path d="M8 104C75 28 137 145 205 78C272 12 331 137 398 72C462 10 515 124 612 48" />
+      </svg>
+      <svg
+        className="studio-editorial-footer__doodle studio-editorial-footer__doodle--loop"
+        viewBox="0 0 360 180"
+        fill="none"
+      >
+        <path d="M8 106C58 35 115 39 142 92C168 143 119 164 91 128C62 91 103 47 171 55C237 62 245 151 198 158C150 165 146 83 221 55C274 35 315 52 352 91" />
+      </svg>
+      <svg
+        className="studio-editorial-footer__doodle studio-editorial-footer__doodle--stitch"
+        viewBox="0 0 420 140"
+        fill="none"
+      >
+        <path d="M6 92C67 17 135 121 201 62C265 5 324 117 414 46" />
+      </svg>
+    </div>
+  );
+}
 
 export function SiteFooter() {
   const pathname = usePathname();
@@ -171,7 +195,7 @@ export function SiteFooter() {
 
   if (pathname === "/studio") {
     return (
-      <footer className="site-footer site-footer--studio">
+      <footer ref={footerRef} className="site-footer site-footer--studio">
         <div className="studio-editorial-footer">
           <span className="studio-kicker">THE LOOK CONTINUES</span>
           <Link
@@ -183,10 +207,9 @@ export function SiteFooter() {
             <span>HALL OF FAME ↗</span>
           </Link>
           <div className="studio-editorial-footer__meta">
-            <span>ANONYMOUS BY DESIGN.</span>
             <Link href="/daily-winners">DAILY WINNERS</Link>
           </div>
-          <ThreadStroke aria-hidden="true" />
+          <StudioFooterDoodles />
         </div>
       </footer>
     );
@@ -194,7 +217,7 @@ export function SiteFooter() {
 
   if (pathname === "/hall-of-fame" || pathname.startsWith("/outfits/")) {
     return (
-      <footer className="site-footer site-footer--hall">
+      <footer ref={footerRef} className="site-footer site-footer--hall">
         <div className="hall-editorial-footer hall-container">
           <span className="hall-label">05 · THE LAST LOOK</span>
           <div
@@ -229,7 +252,7 @@ export function SiteFooter() {
 
   if (pathname.startsWith("/daily-winners")) {
     return (
-      <footer className="site-footer site-footer--winners">
+      <footer ref={footerRef} className="site-footer site-footer--winners">
         <div className="winner-editorial-footer winner-container">
           <span className="winner-label">THE RACE CONTINUES</span>
           <div
@@ -263,7 +286,7 @@ export function SiteFooter() {
   }
 
   return (
-    <footer className="site-footer">
+    <footer ref={footerRef} className="site-footer">
       <div className="site-footer__inner">
         <div>
           <strong>WHITE CHORUS</strong>
