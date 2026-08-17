@@ -2,10 +2,7 @@ import { TZDate } from "@date-fns/tz";
 
 export type DayPeriod = { key: string; start: Date; end: Date };
 
-export function getDayPeriod(
-  now: Date,
-  timezone = "Asia/Jakarta",
-): DayPeriod {
+export function getDayPeriod(now: Date, timezone = "Asia/Jakarta"): DayPeriod {
   const zoned = new TZDate(now, timezone);
   const start = new TZDate(
     zoned.getFullYear(),

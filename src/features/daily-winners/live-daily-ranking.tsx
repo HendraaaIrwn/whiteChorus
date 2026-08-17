@@ -7,6 +7,10 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useHydratedReducedMotion } from "@/components/motion/use-hydrated-reduced-motion";
 import { Button } from "@/components/ui/button";
 import { FallbackImage } from "@/components/ui/fallback-image";
+import {
+  buildLookDetailHref,
+  DAILY_WINNER_LOOK_DETAIL_CONTEXT,
+} from "@/features/outfits/look-detail-navigation";
 import type {
   DailyRankingItem,
   LiveDailyRanking as LiveDailyRankingData,
@@ -110,12 +114,7 @@ const RankingEntry = memo(function RankingEntry({
         <span>{item.rank === 1 ? "CURRENT LEADER" : "LIVE POSITION"}</span>
       </div>
 
-      <Link
-        className="live-ranking__image"
-        href={`/outfits/${item.id}`}
-        aria-label={`Open Anonymous Look ${item.shortCode}`}
-        data-cursor="VIEW"
-      >
+      <div className="live-ranking__image">
         <FallbackImage
           src={item.thumbnailUrl}
           fallbackSrc={productionAssets.defaultLookPath}
@@ -123,13 +122,11 @@ const RankingEntry = memo(function RankingEntry({
           fill
           sizes="(max-width: 767px) 30vw, 170px"
         />
-      </Link>
+      </div>
 
       <div className="live-ranking__identity">
         <span>LOOK {String(item.rank).padStart(3, "0")}</span>
-        <Link href={`/outfits/${item.id}`} data-cursor="VIEW">
-          ANONYMOUS #{item.shortCode}
-        </Link>
+        <span>ANONYMOUS #{item.shortCode}</span>
       </div>
 
       <dl className="live-ranking__metrics">
@@ -183,14 +180,16 @@ const RankingEntry = memo(function RankingEntry({
         </motion.span>
       </AnimatePresence>
 
-      <span className="sr-only">
-        Provisional rank {item.rank}. Weighted score{" "}
-        {item.weightedScore.toFixed(3)}. Average rating{" "}
-        {item.ratingAverage.toFixed(2)} from {item.ratingCount} ratings.
-        {item.eligible
-          ? " Eligible for Daily Winner selection."
-          : ` Needs ${item.ratingsNeeded} more ratings to qualify.`}
-      </span>
+      <Link
+        className="live-ranking__link"
+        href={buildLookDetailHref(item.id, DAILY_WINNER_LOOK_DETAIL_CONTEXT)}
+        data-cursor="VIEW"
+        aria-label={`Open Look ${item.shortCode}, provisional rank ${item.rank}. Weighted score ${item.weightedScore.toFixed(3)}, average rating ${item.ratingAverage.toFixed(2)} from ${item.ratingCount} ratings.${
+          item.eligible
+            ? " Eligible for Daily Winner selection."
+            : ` Needs ${item.ratingsNeeded} more ratings to qualify.`
+        }`}
+      />
     </motion.li>
   );
 });
@@ -280,11 +279,12 @@ export function LiveDailyRanking({
     <section className="live-ranking" aria-labelledby="live-ranking-title">
       <div className="winner-container">
         <div className="winner-grid-system live-ranking__heading">
-          <span className="winner-label">03 · CURRENT COMPETITION</span>
+          <span className="winner-label">02 · CURRENT COMPETITION</span>
           <MaskedHeading
             id="live-ranking-title"
             className="live-ranking__title"
             lines={["LIVE", "RANKING"]}
+            tabIndex={-1}
           />
           <div className="live-ranking__intro">
             <span className="live-ranking__signal">

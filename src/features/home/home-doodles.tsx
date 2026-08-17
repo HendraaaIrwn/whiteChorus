@@ -5,7 +5,10 @@ type DoodleProps = SVGProps<SVGSVGElement>;
 export const chorusWavePath =
   "M0 126C62 126 62 44 125 44C188 44 188 193 250 193C313 193 313 73 375 73C438 73 438 157 500 157C563 157 563 23 625 23C688 23 688 208 750 208C813 208 813 92 875 92C938 92 938 126 1000 126";
 
-export function ThreadStroke(props: DoodleProps) {
+export function ThreadStroke({
+  withArrow = true,
+  ...props
+}: DoodleProps & { withArrow?: boolean }) {
   return (
     <svg viewBox="0 0 520 190" fill="none" {...props}>
       <path
@@ -15,13 +18,15 @@ export function ThreadStroke(props: DoodleProps) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path
-        d="M441 72L474 60L461 92"
-        pathLength="1"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      {withArrow ? (
+        <path
+          d="M441 72L474 60L461 92"
+          pathLength="1"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ) : null}
     </svg>
   );
 }

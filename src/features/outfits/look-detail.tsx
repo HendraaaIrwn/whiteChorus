@@ -23,9 +23,13 @@ function formatPublishedDate(value: string) {
 }
 
 export function LookDetail({
+  backHref,
+  backLabel,
   outfit,
   shareUrl,
 }: {
+  backHref: string;
+  backLabel: "BACK TO HALL OF FAME" | "BACK TO DAILY WINNER";
   outfit: OutfitDetailDTO;
   shareUrl: string;
 }) {
@@ -49,13 +53,31 @@ export function LookDetail({
   return (
     <section className="look-detail__hero" aria-labelledby="look-detail-title">
       <div className="look-detail__container look-detail__grid">
-        <Link
-          className="look-detail__back"
-          href="/hall-of-fame"
-          data-cursor="OPEN"
-        >
-          <span aria-hidden="true">←</span> BACK TO THE HALL
+        <Link className="look-detail__back" href={backHref} data-cursor="OPEN">
+          <span aria-hidden="true">←</span> {backLabel}
         </Link>
+
+        <div className="look-detail__status-line">
+          <span>01 · THE LOOK</span>
+          {outfit.isOwner ? <strong>YOUR LOOK</strong> : null}
+          {outfit.isDailyWinner ? <strong>DAILY WINNER</strong> : null}
+        </div>
+
+        <motion.div
+          className="look-detail__identity"
+          initial={reduceMotion ? false : { opacity: 0, x: -24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{
+            delay: reduceMotion ? 0 : 0.2,
+            duration: reduceMotion ? 0 : 0.58,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+        >
+          <h1 id="look-detail-title" aria-label={title}>
+            <span>LOOK</span>
+            <span>#{outfit.shortCode}</span>
+          </h1>
+        </motion.div>
 
         <div
           className="look-detail__stage"
@@ -153,17 +175,6 @@ export function LookDetail({
             ease: [0.22, 1, 0.36, 1],
           }}
         >
-          <div className="look-detail__status-line">
-            <span>01 · THE LOOK</span>
-            {outfit.isOwner ? <strong>YOUR LOOK</strong> : null}
-            {outfit.isDailyWinner ? <strong>DAILY WINNER</strong> : null}
-          </div>
-
-          <h1 id="look-detail-title" aria-label={title}>
-            <span>LOOK</span>
-            <span>#{outfit.shortCode}</span>
-          </h1>
-
           <dl className="look-detail__metadata">
             <div>
               <dt>PUBLISHED</dt>

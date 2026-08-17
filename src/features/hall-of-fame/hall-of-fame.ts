@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { publicConfig } from "@/config/public-config";
 import { getDailyWinnerSourceIds } from "@/features/daily-winners/daily-winner-lookup";
+import { HALL_PAGE_SIZE } from "@/features/hall-of-fame/hall-constants";
 import { getPrisma } from "@/server/database/prisma";
 import { getGeneratedAssetStorage } from "@/server/storage/generated-asset-storage";
 import type {
@@ -17,7 +18,7 @@ export const hallQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
 });
 export type HallQuery = z.infer<typeof hallQuerySchema>;
-export const HALL_PAGE_SIZE = 9;
+export { HALL_PAGE_SIZE };
 
 type CardRecord = {
   id: string;
@@ -190,7 +191,7 @@ export async function getHallOfFamePage(
 
 export async function getRelatedOutfits(
   excludedId: string,
-  take = 3,
+  take = 4,
 ): Promise<OutfitCardDTO[]> {
   const now = new Date();
   const records = await getPrisma().outfit.findMany({

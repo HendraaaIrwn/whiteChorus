@@ -6,13 +6,13 @@ export function HallOfFameCta() {
   return (
     <section className="hall-cta" aria-labelledby="hall-cta-title">
       <div className="hall-container hall-grid-system">
-        <span className="hall-label">04 · YOUR TURN</span>
+        <span className="hall-label">03 · YOUR TURN</span>
         <MaskedHeading
           id="hall-cta-title"
           className="hall-cta__title"
           lines={["YOU’VE SEEN", "THE CHORUS.", "NOW MAKE YOURS."]}
         />
-        <div className="hall-cta__action-wrap">
+        <div className="hall-cta__action-wrap" data-cursor="DRESS">
           <RadialRevealButton
             className="hall-cta__action"
             href="/studio"
@@ -22,10 +22,7 @@ export function HallOfFameCta() {
             <span aria-hidden="true">↗</span>
           </RadialRevealButton>
         </div>
-        <span className="hall-cta__note">
-          TWO CHARACTERS · ONE SHARED STAGE · ANONYMOUS BY DESIGN
-        </span>
-        <ThreadStroke aria-hidden="true" />
+        <ThreadStroke aria-hidden="true" withArrow={false} />
         <Bow aria-hidden="true" />
         <Sparkle aria-hidden="true" />
       </div>

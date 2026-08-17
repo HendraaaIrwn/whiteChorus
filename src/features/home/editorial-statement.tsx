@@ -14,31 +14,11 @@ export function EditorialStatement() {
     target: sceneRef,
     offset: ["start end", "end start"],
   });
-  const firstDesktopX = useTransform(
-    scrollYProgress,
-    [0, 1],
-    ["-11%", "11%"],
-  );
-  const firstTabletX = useTransform(
-    scrollYProgress,
-    [0, 1],
-    ["-8%", "8%"],
-  );
-  const firstMobileX = useTransform(
-    scrollYProgress,
-    [0, 1],
-    ["-4.5%", "4.5%"],
-  );
-  const secondDesktopX = useTransform(
-    scrollYProgress,
-    [0, 1],
-    ["11%", "-11%"],
-  );
-  const secondTabletX = useTransform(
-    scrollYProgress,
-    [0, 1],
-    ["8%", "-8%"],
-  );
+  const firstDesktopX = useTransform(scrollYProgress, [0, 1], ["-11%", "11%"]);
+  const firstTabletX = useTransform(scrollYProgress, [0, 1], ["-8%", "8%"]);
+  const firstMobileX = useTransform(scrollYProgress, [0, 1], ["-4.5%", "4.5%"]);
+  const secondDesktopX = useTransform(scrollYProgress, [0, 1], ["11%", "-11%"]);
+  const secondTabletX = useTransform(scrollYProgress, [0, 1], ["8%", "-8%"]);
   const secondMobileX = useTransform(
     scrollYProgress,
     [0, 1],

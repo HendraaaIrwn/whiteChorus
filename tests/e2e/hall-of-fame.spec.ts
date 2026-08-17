@@ -22,12 +22,34 @@ test("renders the editorial Hall sequence and route-scoped chrome", async ({
   await expect(
     page.getByRole("heading", { level: 1, name: "HALL OF FAME" }),
   ).toBeVisible();
-  await expect(page.getByText("02 · DAILY SPOTLIGHT")).toBeVisible();
+  await expect(
+    page.getByText("01 · COMMUNITY EXHIBITION", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      level: 2,
+      name: "ONE LOOK. ONE MOMENT. ONE SHARED WALL.",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "02 · THE OPEN HALL" }),
+  ).toBeVisible();
+  await expect(page.getByText("03 · YOUR TURN", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("04 · THE LAST LOOK", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/DAILY SPOTLIGHT/)).toHaveCount(0);
+  await expect(
+    page.getByText(
+      "Browse the newest entries, the strongest scores, or the looks moving through the chorus right now.",
+      { exact: true },
+    ),
+  ).toHaveCount(0);
   await expect(
     page.getByRole("heading", {
       name: "ONE LOOK. ONE MOMENT. ONE SHARED WALL.",
     }),
-  ).toBeVisible();
+  ).toHaveCount(1);
   await expect(
     page.getByRole("heading", {
       name: "YOU’VE SEEN THE CHORUS. NOW MAKE YOURS.",
@@ -37,7 +59,7 @@ test("renders the editorial Hall sequence and route-scoped chrome", async ({
   await expect(page.locator(".site-footer--hall")).toBeVisible();
 
   const sectionTops = await page
-    .locator(".hall-hero, .hall-spotlight, .hall-collection, .hall-cta")
+    .locator(".hall-hero, .hall-collection, .hall-cta, .site-footer--hall")
     .evaluateAll((sections) =>
       sections.map((section) => section.getBoundingClientRect().top + scrollY),
     );
@@ -206,6 +228,24 @@ test("keeps every acceptance width unclipped and rating targets touch-sized", as
     expect(ratingTargetHeights.length).toBeGreaterThan(0);
     expect(ratingTargetHeights.every((height) => height >= 44)).toBe(true);
 
+    const grid = page.locator(".hall-grid");
+    const gridColumnCount = await grid.evaluate(
+      (element) =>
+        getComputedStyle(element).gridTemplateColumns.split(" ").length,
+    );
+    const expectedColumnCount =
+      viewport.width >= 1200
+        ? 4
+        : viewport.width >= 900
+          ? 3
+          : viewport.width >= 600
+            ? 2
+            : 1;
+    expect(gridColumnCount).toBe(expectedColumnCount);
+    expect(
+      await page.locator(".hall-grid > .hall-look").count(),
+    ).toBeLessThanOrEqual(12);
+
     if (viewport.width <= 430) {
       await expect(page.locator(".hall-look__meta").first()).toBeVisible();
       await expect(
@@ -274,12 +314,12 @@ test("renders empty and route error states without losing the Hall language", as
   ).toBeVisible();
 });
 
-test("shows the Hall loading composition during a collection transition", async ({
+test("keeps the Hall scenes mounted during a collection transition", async ({
   page,
 }, testInfo) => {
   test.skip(
     testInfo.project.name !== "chromium",
-    "Loading transition is covered once in Chromium.",
+    "Collection transition behavior is covered once in Chromium.",
   );
 
   await page.goto("/hall-of-fame");
@@ -291,6 +331,12 @@ test("shows the Hall loading composition during a collection transition", async 
   });
 
   await page.getByRole("link", { name: /TRENDING/ }).click();
-  await expect(page.locator(".hall-loading")).toBeVisible();
+  await expect(page.locator(".hall-hero")).toBeVisible();
+  await expect(page.locator(".hall-cta")).toBeVisible();
+  await expect(page.locator(".hall-loading")).toHaveCount(0);
   await expect(page).toHaveURL(/sort=trending&page=1/);
+  await expect(page.getByRole("link", { name: /TRENDING/ })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
 });

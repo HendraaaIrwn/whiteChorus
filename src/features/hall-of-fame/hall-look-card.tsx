@@ -22,6 +22,8 @@ function formatPublishedAt(value: string) {
 }
 
 type HallLookCardBaseProps = {
+  detailHref: string;
+  imageSizes?: string;
   index: number;
   priority?: boolean;
   tone: HallLookTone;
@@ -41,14 +43,18 @@ type HallLookCardProps = HallLookCardBaseProps &
   );
 
 export function HallLookCard(props: HallLookCardProps) {
-  const { index, outfit, priority, tone, variant } = props;
+  const { detailHref, imageSizes, index, outfit, priority, tone, variant } =
+    props;
   const title = `ANONYMOUS LOOK #${outfit.shortCode}`;
   const sizes =
-    variant === "wide"
-      ? "(max-width: 767px) 92vw, (max-width: 1199px) 62vw, 58vw"
-      : variant === "compact"
-        ? "(max-width: 767px) 84vw, (max-width: 1199px) 34vw, 30vw"
-        : "(max-width: 767px) 92vw, (max-width: 1199px) 54vw, 48vw";
+    imageSizes ??
+    (variant === "grid"
+      ? "(max-width: 599px) calc(100vw - 32px), (max-width: 899px) calc(50vw - 32px), (max-width: 1199px) calc(33vw - 32px), (max-width: 1600px) calc(25vw - 36px), 368px"
+      : variant === "wide"
+        ? "(max-width: 767px) 92vw, (max-width: 1199px) 62vw, 58vw"
+        : variant === "compact"
+          ? "(max-width: 767px) 84vw, (max-width: 1199px) 34vw, 30vw"
+          : "(max-width: 767px) 92vw, (max-width: 1199px) 54vw, 48vw");
 
   return (
     <article
@@ -57,7 +63,7 @@ export function HallLookCard(props: HallLookCardProps) {
     >
       <Link
         className="hall-look__media-link"
-        href={`/outfits/${outfit.id}`}
+        href={detailHref}
         data-cursor="VIEW"
         aria-label={`View ${title}`}
       >
@@ -83,7 +89,7 @@ export function HallLookCard(props: HallLookCardProps) {
         <div className="hall-look__heading">
           <div>
             <span>FROM THE CHORUS</span>
-            <Link href={`/outfits/${outfit.id}`} data-cursor="VIEW">
+            <Link href={detailHref} data-cursor="VIEW">
               <h3>{title}</h3>
             </Link>
           </div>
@@ -122,7 +128,7 @@ export function HallLookCard(props: HallLookCardProps) {
           )}
           <Link
             className="hall-look__open"
-            href={`/outfits/${outfit.id}`}
+            href={detailHref}
             data-cursor="OPEN"
             aria-label={`Open details for ${title}`}
           >

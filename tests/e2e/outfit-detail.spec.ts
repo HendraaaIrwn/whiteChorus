@@ -25,7 +25,7 @@ async function openFirstLook(page: Page) {
   return href;
 }
 
-test("renders one editorial look before rating, Related Looks, and Hall footer", async ({
+test("renders one editorial look before rating, Related Looks, and the shared editorial footer", async ({
   page,
 }, testInfo) => {
   test.skip(
@@ -51,13 +51,100 @@ test("renders one editorial look before rating, Related Looks, and Hall footer",
     .locator(".look-detail__related-grid .hall-look")
     .count();
   expect(relatedCount).toBeGreaterThan(0);
-  expect(relatedCount).toBeLessThanOrEqual(3);
+  expect(relatedCount).toBeLessThanOrEqual(4);
   await expect(page.locator(".site-header--hall")).toBeVisible();
-  await expect(page.locator(".site-footer--hall")).toBeVisible();
+  const footer = page.locator(".site-footer--hall.site-footer--editorial");
+  await expect(footer).toBeVisible();
+  await expect(footer.locator(".home-label")).toHaveText("05 · THE LAST LOOK");
+  await expect(footer.locator("[data-footer-title-reveal]")).toBeVisible();
+  await expect(footer.locator("[data-footer-wave-reveal]")).toHaveCount(1);
+  await expect(footer.locator("[data-footer-spark-reveal]")).toHaveCount(3);
+  await expect(footer.getByRole("link")).toHaveText([
+    "HOME",
+    "DRESS UP",
+    "HALL OF FAME",
+    "DAILY WINNERS",
+  ]);
   await expect(page.locator(".hall-cta")).toHaveCount(0);
   await expect(
     page.locator(".look-detail__hero + .look-detail__related"),
   ).toBeVisible();
+});
+
+test("uses explicit Hall, Daily Winner, and direct-access back contexts", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "Origin-aware navigation is covered once in desktop Chromium.",
+  );
+
+  await page.goto("/hall-of-fame?sort=newest&page=1");
+  const hallLink = page.locator(".hall-look__media-link").first();
+  await expect(hallLink).toBeVisible();
+  const hallHref = await hallLink.getAttribute("href");
+  const hallUrl = new URL(hallHref!, "http://localhost");
+  expect(hallUrl.searchParams.get("from")).toBe("hall-of-fame");
+  expect(hallUrl.searchParams.get("returnTo")).toBe(
+    "/hall-of-fame?sort=newest&page=1",
+  );
+
+  await hallLink.click();
+  const backLink = page.locator(".look-detail__back");
+  await expect(backLink).toHaveText(/BACK TO HALL OF FAME/);
+  await expect(backLink).toHaveAttribute(
+    "href",
+    "/hall-of-fame?sort=newest&page=1",
+  );
+  await backLink.click();
+  await expect(page).toHaveURL(/\/hall-of-fame\?sort=newest&page=1$/);
+
+  const directPath = hallUrl.pathname;
+  await page.goto(`${directPath}?from=daily-winner&returnTo=%2Fdaily-winners`);
+  await expect(backLink).toHaveText(/BACK TO DAILY WINNER/);
+  await expect(backLink).toHaveAttribute("href", "/daily-winners");
+  await backLink.click();
+  await expect(page).toHaveURL(/\/daily-winners$/);
+
+  await page.goto(directPath);
+  await expect(backLink).toHaveText(/BACK TO HALL OF FAME/);
+  await expect(backLink).toHaveAttribute("href", "/hall-of-fame");
+});
+
+test("preserves the original source while opening another related look", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "Related navigation context is covered once in desktop Chromium.",
+  );
+
+  const firstHref = await firstLookHref(page);
+  await page.goto(firstHref);
+  const relatedLink = page
+    .locator(".look-detail__related .hall-look__media-link")
+    .first();
+  test.skip(
+    (await relatedLink.count()) === 0,
+    "No real related look available.",
+  );
+
+  const relatedHref = await relatedLink.getAttribute("href");
+  const relatedUrl = new URL(relatedHref!, "http://localhost");
+  expect(relatedUrl.pathname).not.toBe(
+    new URL(firstHref, "http://localhost").pathname,
+  );
+  expect(relatedUrl.searchParams.get("from")).toBe("hall-of-fame");
+  expect(relatedUrl.searchParams.get("returnTo")).toBe(
+    "/hall-of-fame?sort=newest&page=1",
+  );
+
+  await relatedLink.click();
+  await expect(page.locator("[data-look-detail-page]")).toBeVisible();
+  await expect(page.locator(".look-detail__back")).toHaveAttribute(
+    "href",
+    "/hall-of-fame?sort=newest&page=1",
+  );
 });
 
 test("reserves the editorial stage during a detail route transition", async ({
@@ -200,15 +287,28 @@ test("keeps the look dominant and unclipped at every acceptance width", async ({
     const media = await page.locator(".look-detail__media-mask").boundingBox();
     expect(media).not.toBeNull();
     expect(media!.width / media!.height).toBeCloseTo(0.75, 1);
+    const identity = await page
+      .locator(".look-detail__identity h1")
+      .boundingBox();
+    const information = await page
+      .locator(".look-detail__information")
+      .boundingBox();
+    expect(identity).not.toBeNull();
+    expect(information).not.toBeNull();
     if (viewport.width >= 1200) {
       expect(media!.height).toBeGreaterThanOrEqual(viewport.height * 0.6);
       expect(media!.height).toBeLessThanOrEqual(viewport.height * 0.82);
-    } else if (viewport.width >= 768) {
-      const information = await page
-        .locator(".look-detail__information")
-        .boundingBox();
-      expect(information).not.toBeNull();
+    }
+
+    if (viewport.width >= 768) {
+      expect(media!.x + media!.width).toBeLessThanOrEqual(identity!.x);
       expect(media!.x + media!.width).toBeLessThanOrEqual(information!.x);
+      expect(Math.abs(identity!.y - media!.y)).toBeLessThanOrEqual(2);
+    } else {
+      expect(media!.y + media!.height).toBeLessThanOrEqual(identity!.y);
+      expect(identity!.y + identity!.height).toBeLessThanOrEqual(
+        information!.y,
+      );
     }
 
     const targetHeights = await page
@@ -219,24 +319,80 @@ test("keeps the look dominant and unclipped at every acceptance width", async ({
     expect(targetHeights).toHaveLength(5);
     expect(targetHeights.every((height) => height >= 44)).toBe(true);
 
-    if (viewport.width <= 430) {
-      const relatedWidths = await page
-        .locator(".look-detail__related-grid .hall-look")
-        .evaluateAll((cards) =>
-          cards.map((card) => card.getBoundingClientRect().width),
-        );
-      expect(relatedWidths.length).toBeGreaterThan(0);
-      expect(relatedWidths.length).toBeLessThanOrEqual(3);
-      expect(
-        Math.max(...relatedWidths) - Math.min(...relatedWidths),
-      ).toBeLessThan(2);
-    }
+    const relatedGrid = page.locator(".look-detail__related-grid");
+    const relatedWidths = await relatedGrid
+      .locator(".hall-look")
+      .evaluateAll((cards) =>
+        cards.map((card) => card.getBoundingClientRect().width),
+      );
+    expect(relatedWidths.length).toBeGreaterThan(0);
+    expect(relatedWidths.length).toBeLessThanOrEqual(4);
+    expect(
+      Math.max(...relatedWidths) - Math.min(...relatedWidths),
+    ).toBeLessThan(2);
+    const gridColumnCount = await relatedGrid.evaluate(
+      (grid) => getComputedStyle(grid).gridTemplateColumns.split(" ").length,
+    );
+    expect(gridColumnCount).toBe(
+      viewport.width >= 1200 ? 4 : viewport.width >= 768 ? 2 : 1,
+    );
 
     await testInfo.attach(`look-detail-${viewport.width}px`, {
       body: await page.screenshot({ fullPage: true }),
       contentType: "image/png",
     });
   }
+});
+
+test("matches the homepage footer structure and typography contract", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "Footer parity is covered once in desktop Chromium.",
+  );
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openFirstLook(page);
+
+  const readFooterContract = (selector: string) =>
+    page.locator(selector).evaluate((footer) => {
+      const title = footer.querySelector<HTMLElement>(
+        ".home-editorial-footer__title",
+      )!;
+      const wave = footer.querySelector<SVGPathElement>("svg path")!;
+      const nav = footer.querySelector<HTMLElement>(".editorial-footer__nav")!;
+      const titleStyle = getComputedStyle(title);
+      const navStyle = getComputedStyle(nav);
+      return {
+        title: {
+          fontSize: titleStyle.fontSize,
+          fontWeight: titleStyle.fontWeight,
+          letterSpacing: titleStyle.letterSpacing,
+          lineHeight: titleStyle.lineHeight,
+        },
+        nav: {
+          display: navStyle.display,
+          gap: navStyle.gap,
+          gridColumn: navStyle.gridColumn,
+        },
+        wavePath: wave.getAttribute("d"),
+      };
+    });
+
+  const detailFooter = page.locator(
+    ".site-footer--hall.site-footer--editorial",
+  );
+  await detailFooter.scrollIntoViewIfNeeded();
+  const detailContract = await readFooterContract(
+    ".site-footer--hall.site-footer--editorial",
+  );
+
+  await page.goto("/");
+  const homeFooter = page.locator(".site-footer--home");
+  await homeFooter.scrollIntoViewIfNeeded();
+  expect(detailContract).toEqual(
+    await readFooterContract(".site-footer--home"),
+  );
 });
 
 test("uses the Hall cursor only for fine pointers and disables it for reduced motion", async ({

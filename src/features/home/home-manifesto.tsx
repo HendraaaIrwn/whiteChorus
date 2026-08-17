@@ -138,7 +138,6 @@ export function HomeManifesto() {
         >
           <Sparkle />
         </motion.div>
-
       </div>
 
       <div className="home-manifesto__edge-note" aria-hidden="true">

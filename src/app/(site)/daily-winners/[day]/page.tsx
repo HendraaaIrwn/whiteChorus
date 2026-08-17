@@ -53,7 +53,12 @@ export default async function DailyWinnerPage({
             alt={`Daily winning White Chorus look ${winner.shortCode}.`}
           />
         </Reveal>
-        <RevealAside className="detail-panel" delay={0.08} distance={12} inView={false}>
+        <RevealAside
+          className="detail-panel"
+          delay={0.08}
+          distance={12}
+          inView={false}
+        >
           <p className="eyebrow">Winner for {winner.dayKey}</p>
           <h1>ANONYMOUS LOOK #{winner.shortCode}</h1>
           <p>

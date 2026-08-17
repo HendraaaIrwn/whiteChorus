@@ -1,1 +1,93 @@
-{"nodes": [{"id": "users_neuhendra_developer_whitechorus_opencode_goals_state_json_sessions_96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_json", "label": "state.json", "file_type": "code", "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json", "source_location": "L1"}, {"id": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_version", "label": "version", "file_type": "code", "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json", "source_location": "L2"}, {"id": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_goals", "label": "goals", "file_type": "code", "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json", "source_location": "L3"}, {"id": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_results", "label": "results", "file_type": "code", "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json", "source_location": "L4"}, {"id": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_archives", "label": "archives", "file_type": "code", "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json", "source_location": "L5"}, {"id": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_orderedsessions", "label": "orderedSessions", "file_type": "code", "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json", "source_location": "L6"}], "edges": [{"source": "users_neuhendra_developer_whitechorus_opencode_goals_state_json_sessions_96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_json", "target": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_version", "relation": "contains", "confidence": "EXTRACTED", "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json", "source_location": "L2", "weight": 1.0}, {"source": "users_neuhendra_developer_whitechorus_opencode_goals_state_json_sessions_96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_json", "target": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_goals", "relation": "contains", "confidence": "EXTRACTED", "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json", "source_location": "L3", "weight": 1.0}, {"source": "users_neuhendra_developer_whitechorus_opencode_goals_state_json_sessions_96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_json", "target": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_results", "relation": "contains", "confidence": "EXTRACTED", "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json", "source_location": "L4", "weight": 1.0}, {"source": "users_neuhendra_developer_whitechorus_opencode_goals_state_json_sessions_96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_json", "target": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_archives", "relation": "contains", "confidence": "EXTRACTED", "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json", "source_location": "L5", "weight": 1.0}, {"source": "users_neuhendra_developer_whitechorus_opencode_goals_state_json_sessions_96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_json", "target": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_orderedsessions", "relation": "contains", "confidence": "EXTRACTED", "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json", "source_location": "L6", "weight": 1.0}]}
+{
+  "nodes": [
+    {
+      "id": "users_neuhendra_developer_whitechorus_opencode_goals_state_json_sessions_96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_json",
+      "label": "state.json",
+      "file_type": "code",
+      "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json",
+      "source_location": "L1"
+    },
+    {
+      "id": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_version",
+      "label": "version",
+      "file_type": "code",
+      "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json",
+      "source_location": "L2"
+    },
+    {
+      "id": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_goals",
+      "label": "goals",
+      "file_type": "code",
+      "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json",
+      "source_location": "L3"
+    },
+    {
+      "id": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_results",
+      "label": "results",
+      "file_type": "code",
+      "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json",
+      "source_location": "L4"
+    },
+    {
+      "id": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_archives",
+      "label": "archives",
+      "file_type": "code",
+      "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json",
+      "source_location": "L5"
+    },
+    {
+      "id": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_orderedsessions",
+      "label": "orderedSessions",
+      "file_type": "code",
+      "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json",
+      "source_location": "L6"
+    }
+  ],
+  "edges": [
+    {
+      "source": "users_neuhendra_developer_whitechorus_opencode_goals_state_json_sessions_96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_json",
+      "target": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_version",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
+      "source": "users_neuhendra_developer_whitechorus_opencode_goals_state_json_sessions_96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_json",
+      "target": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_goals",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json",
+      "source_location": "L3",
+      "weight": 1.0
+    },
+    {
+      "source": "users_neuhendra_developer_whitechorus_opencode_goals_state_json_sessions_96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_json",
+      "target": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_results",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json",
+      "source_location": "L4",
+      "weight": 1.0
+    },
+    {
+      "source": "users_neuhendra_developer_whitechorus_opencode_goals_state_json_sessions_96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_json",
+      "target": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_archives",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json",
+      "source_location": "L5",
+      "weight": 1.0
+    },
+    {
+      "source": "users_neuhendra_developer_whitechorus_opencode_goals_state_json_sessions_96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_json",
+      "target": "96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e_state_orderedsessions",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".opencode/goals/state.json.sessions/96ad07b3d19406c79f7ebb644cbadc3303aad76ea988b40d9b043521ce21ef9e/state.json",
+      "source_location": "L6",
+      "weight": 1.0
+    }
+  ]
+}

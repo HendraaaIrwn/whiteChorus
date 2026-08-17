@@ -1,21 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion, type Variants } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 import { useHydratedReducedMotion } from "@/components/motion/use-hydrated-reduced-motion";
 import { Bow, Sparkle, ThreadStroke } from "@/features/home/home-doodles";
-import { MaskedHeading } from "@/features/home/home-motion";
+import { HALL_PAGE_SIZE } from "@/features/hall-of-fame/hall-constants";
 import { HallLookCard } from "@/features/hall-of-fame/hall-look-card";
-import {
-  getHallCardLayout,
-  getHallClusterStart,
-  HALL_CLUSTER_SIZES,
-} from "@/features/hall-of-fame/layout-pattern";
 import { Pagination } from "@/features/hall-of-fame/pagination";
 import { SortTabs } from "@/features/hall-of-fame/sort-tabs";
 import type { HallOutfitCardDTO } from "@/features/outfits/outfit.types";
+import {
+  buildLookDetailHref,
+  createHallLookDetailContext,
+} from "@/features/outfits/look-detail-navigation";
 
 const HALL_SCROLL_KEY = "white-chorus:hall-scroll-to-collection";
 
@@ -33,17 +32,7 @@ export function HallCollection({
   const reduceMotion = useHydratedReducedMotion();
   const sectionRef = useRef<HTMLElement | null>(null);
   const collectionKey = `${activeSort}:${page}`;
-  const clusters = useMemo(
-    () =>
-      HALL_CLUSTER_SIZES.map((size, clusterIndex) => {
-        const offset = getHallClusterStart(clusterIndex);
-        const cluster = items
-          .slice(offset, offset + size)
-          .map((outfit, index) => ({ index: offset + index, outfit }));
-        return { cluster, clusterIndex };
-      }).filter(({ cluster }) => cluster.length > 0),
-    [items],
-  );
+  const detailContext = createHallLookDetailContext(activeSort, page);
 
   useEffect(() => {
     if (window.sessionStorage.getItem(HALL_SCROLL_KEY) !== "1") return;
@@ -60,24 +49,6 @@ export function HallCollection({
   const markCollectionNavigation = () => {
     window.sessionStorage.setItem(HALL_SCROLL_KEY, "1");
   };
-  const clusterVariants: Variants = {
-    hidden: {
-      opacity: 0,
-      clipPath: "inset(10% 0 0 0 round 28px)",
-      y: 22,
-      scale: 1.01,
-    },
-    visible: {
-      opacity: 1,
-      clipPath: "inset(0% 0 0 0 round 0px)",
-      y: 0,
-      scale: 1,
-      transition: {
-        duration: reduceMotion ? 0 : 0.72,
-        ease: [0.22, 1, 0.36, 1],
-      },
-    },
-  };
 
   return (
     <section
@@ -87,18 +58,11 @@ export function HallCollection({
       aria-labelledby="hall-collection-title"
     >
       <div className="hall-container">
-        <div className="hall-grid-system hall-collection__intro">
-          <span className="hall-label">03 · THE OPEN HALL</span>
-          <MaskedHeading
-            id="hall-collection-title"
-            className="hall-collection__title"
-            lines={["ONE LOOK.", "ONE MOMENT.", "ONE SHARED WALL."]}
-          />
-          <p>
-            Browse the newest entries, the strongest scores, or the looks moving
-            through the chorus right now.
-          </p>
-        </div>
+        <header className="hall-grid-system hall-collection__header">
+          <h2 id="hall-collection-title" className="hall-label">
+            02 · THE OPEN HALL
+          </h2>
+        </header>
 
         <SortTabs
           activeSort={activeSort}
@@ -109,37 +73,34 @@ export function HallCollection({
           <motion.div
             key={collectionKey}
             className="hall-collection__page"
-            initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? undefined : { opacity: 0, y: -12 }}
-            transition={{ duration: reduceMotion ? 0 : 0.32 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+            animate={{
+              opacity: 1,
+              y: 0,
+              transition: reduceMotion
+                ? { duration: 0 }
+                : { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
+            }}
+            exit={{
+              opacity: reduceMotion ? 1 : 0,
+              y: reduceMotion ? 0 : -8,
+              transition: reduceMotion
+                ? { duration: 0 }
+                : { duration: 0.14, ease: [0.65, 0, 0.35, 1] },
+            }}
           >
             {items.length ? (
               <div className="hall-grid" data-page={page}>
-                {clusters.map(({ cluster, clusterIndex }) => (
-                  <motion.section
-                    key={`${collectionKey}:${clusterIndex}`}
-                    className={`hall-cluster hall-cluster--${clusterIndex + 1}`}
-                    aria-label={`Look collection ${clusterIndex + 1}`}
-                    variants={clusterVariants}
-                    initial={reduceMotion ? false : "hidden"}
-                    whileInView="visible"
-                    viewport={{ once: true, amount: 0.12 }}
-                  >
-                    {cluster.map(({ index, outfit }) => {
-                      const layout = getHallCardLayout(index);
-                      return (
-                        <HallLookCard
-                          key={outfit.id}
-                          index={index}
-                          outfit={outfit}
-                          priority={page === 1 && index < 2}
-                          tone={layout.tone}
-                          variant={layout.variant}
-                        />
-                      );
-                    })}
-                  </motion.section>
+                {items.map((outfit, index) => (
+                  <HallLookCard
+                    key={outfit.id}
+                    detailHref={buildLookDetailHref(outfit.id, detailContext)}
+                    index={(page - 1) * HALL_PAGE_SIZE + index}
+                    outfit={outfit}
+                    priority={page === 1 && index < 2}
+                    tone="soft"
+                    variant="grid"
+                  />
                 ))}
               </div>
             ) : (
