@@ -23,6 +23,14 @@ describe.skipIf(!runDatabaseTests)("cleanupOutfits", () => {
     });
     const outfitId = randomUUID();
     const paths = storagePaths(outfitId);
+    // shareImagePath is storage-only (derived from outfitId on demand); the
+    // outfits table has no column for it, so persist just the four DB paths.
+    const dbPaths = {
+      finalImagePath: paths.finalImagePath,
+      downloadImagePath: paths.downloadImagePath,
+      thumbnailPath: paths.thumbnailPath,
+      socialImagePath: paths.socialImagePath,
+    };
     const outfit = await prisma!.outfit.create({
       data: {
         id: outfitId,
@@ -33,7 +41,7 @@ describe.skipIf(!runDatabaseTests)("cleanupOutfits", () => {
         characterAConfig: {},
         characterBConfig: {},
         configurationHash: createHash("sha256").update(outfitId).digest("hex"),
-        ...paths,
+        ...dbPaths,
         status: "PUBLISHED",
         publishedAt: new Date(now.getTime() - 2 * 86_400_000),
         expiresAt: new Date(now.getTime() - 3_600_000),
