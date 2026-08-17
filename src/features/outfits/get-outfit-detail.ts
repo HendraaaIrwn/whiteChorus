@@ -66,6 +66,7 @@ export async function getOutfitDetail(
     socialImageUrl: productionMode
       ? storage.publicUrl(outfit.socialImagePath)
       : "",
+    shareImageUrl: `/api/outfits/${outfit.id}/share-image`,
     downloadUrl: `/api/outfits/${outfit.id}/download`,
     ratingAverage: Number(outfit.ratingAverage),
     ratingCount: outfit.ratingCount,

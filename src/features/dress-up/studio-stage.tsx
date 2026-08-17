@@ -16,6 +16,7 @@ import {
 } from "@/components/motion/motion-presets";
 import { useHydratedReducedMotion } from "@/components/motion/use-hydrated-reduced-motion";
 import {
+  CHARACTER_STAGE,
   getAsset,
   renderLayersFor,
   type RenderLayer,
@@ -50,11 +51,20 @@ function CharacterLayers({
   randomizing: boolean;
   reduceMotion: boolean;
 }) {
+  const registration = CHARACTER_STAGE[character];
+
   return (
     <motion.div
       className={`studio-character-group studio-character-group--${character === "character-a" ? "emir" : "friska"}`}
       data-active={active || undefined}
-      style={{ x: pointerX }}
+      data-stage-x={registration.x}
+      data-stage-y={registration.y}
+      style={{
+        left: `${(registration.x / 1200) * 100}%`,
+        top: `${(registration.y / 1600) * 100}%`,
+        scale: registration.scale,
+        x: pointerX,
+      }}
       animate={
         reduceMotion
           ? { opacity: 1 }
@@ -67,30 +77,26 @@ function CharacterLayers({
           .filter((layer) => !failedAssets.has(layer.path))
           .map((layer, index) => (
             <motion.img
-              key={layer.path}
+              key={`${layer.assetId}:${layer.path}`}
               className="studio-production-layer"
+              data-asset-id={layer.assetId}
+              data-character={character}
               src={layer.path}
               alt=""
               width={1200}
               height={1600}
               fetchPriority={layer.kind === "base" ? "high" : undefined}
               onError={() => onAssetError(layer.path)}
-              style={{
-                left: layer.left ? `${(layer.left / 1200) * 100}%` : 0,
-                top: layer.top ? `${(layer.top / 1600) * 100}%` : 0,
-              }}
+              style={{ zIndex: layer.layerOrder % 100 }}
               initial={
-                reduceMotion || layer.kind === "base"
-                  ? false
-                  : { opacity: 0, scale: 1.04 }
+                reduceMotion || layer.kind === "base" ? false : { opacity: 0 }
               }
-              animate={{ opacity: 1, scale: 1 }}
+              animate={{ opacity: 1 }}
               exit={
                 reduceMotion || layer.kind === "base"
                   ? undefined
                   : {
                       opacity: 0,
-                      scale: 0.97,
                       transition: {
                         duration: editorialMotionDurations.layerExit,
                       },
@@ -259,17 +265,17 @@ export function CharacterStage({
           aria-label={`Emir and Friska on the ${background?.label ?? "selected"} background.`}
         >
           <AnimatePresence initial={false} mode="popLayout">
-            {background?.renderPaths[0] &&
-            !failedAssets.has(background.renderPaths[0]) ? (
+            {background?.assetSrcs[0] &&
+            !failedAssets.has(background.assetSrcs[0]) ? (
               <motion.img
-                key={background.renderPaths[0]}
+                key={background.assetSrcs[0]}
                 className="studio-stage__background"
-                src={background.renderPaths[0]}
+                src={background.assetSrcs[0]}
                 alt=""
                 width={1200}
                 height={1600}
                 fetchPriority="high"
-                onError={() => markAssetFailed(background.renderPaths[0]!)}
+                onError={() => markAssetFailed(background.assetSrcs[0]!)}
                 style={{ x: smoothBackground }}
                 initial={
                   reduceMotion

@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
 
 import { getServerEnv } from "@/config/env";
+import {
+  SHOW_FAKE_DAILY_WINNER_PLACEHOLDER,
+  withFakeDailyWinnerPlaceholder,
+} from "@/features/daily-winners/daily-winner-debug";
 import { getCompletedDayPeriod } from "@/features/daily-winners/day-period";
 import {
+  getDailyWinnersOverview,
   getLiveDailyRanking,
-  listDailyWinners,
 } from "@/features/daily-winners/daily-winners";
 import {
   DailyWinnerArchive,
   DailyWinnerCta,
-  DailyWinnerHero,
+  LatestDailyWinner,
 } from "@/features/daily-winners/daily-winner-scenes";
 import { LiveDailyRanking } from "@/features/daily-winners/live-daily-ranking";
 import { CustomCursor } from "@/features/home/home-motion";
@@ -17,37 +21,55 @@ import { CustomCursor } from "@/features/home/home-motion";
 export const metadata: Metadata = {
   title: "Daily Winner & Live Ranking",
   description:
-    "See the finalized White Chorus Daily Winner and follow today's provisional ranking as real ratings change.",
+    "See the latest finalized White Chorus Daily Winner and follow the active provisional ranking as real ratings change.",
   alternates: { canonical: "/daily-winners" },
 };
 export const dynamic = "force-dynamic";
 
 export default async function DailyWinnersPage() {
+  const now = new Date();
   const completedDayKey = getCompletedDayPeriod(
-    new Date(),
+    now,
     getServerEnv().DAILY_TIMEZONE,
   ).key;
-  const [winnersResult, rankingResult] = await Promise.allSettled([
-    listDailyWinners(7),
-    getLiveDailyRanking(),
+  const [overviewResult, rankingResult] = await Promise.allSettled([
+    getDailyWinnersOverview(now),
+    getLiveDailyRanking({ now, page: 1 }),
   ]);
-  const winners =
-    winnersResult.status === "fulfilled" ? winnersResult.value : [];
-  const completedWinners = winners.filter(
-    (winner) => winner.dayKey <= completedDayKey,
-  );
+  const overview =
+    overviewResult.status === "fulfilled"
+      ? overviewResult.value
+      : { latestWinner: null, completedDays: [] };
+  const displayedWinners = withFakeDailyWinnerPlaceholder({
+    winners: [overview.latestWinner, ...overview.completedDays].filter(
+      (winner) => winner !== null,
+    ),
+    completedDayKey,
+    enabled: SHOW_FAKE_DAILY_WINNER_PLACEHOLDER,
+  });
+  const latestWinner = displayedWinners[0] ?? null;
+  const completedDays = displayedWinners.slice(1, 8);
+  const latestState = latestWinner
+    ? "winner"
+    : overviewResult.status === "rejected"
+      ? "error"
+      : "empty";
 
   return (
     <div className="winner-page" data-winner-page>
       <CustomCursor scope="winner" />
-      <DailyWinnerHero />
+      <LatestDailyWinner
+        completedDayKey={completedDayKey}
+        state={latestState}
+        winner={latestWinner}
+      />
       <LiveDailyRanking
         initialRanking={
           rankingResult.status === "fulfilled" ? rankingResult.value : null
         }
       />
-      <DailyWinnerArchive winners={completedWinners} />
-      <DailyWinnerCta sectionNumber={completedWinners.length ? "04" : "03"} />
+      <DailyWinnerArchive winners={completedDays} />
+      <DailyWinnerCta sectionNumber="04" />
     </div>
   );
 }

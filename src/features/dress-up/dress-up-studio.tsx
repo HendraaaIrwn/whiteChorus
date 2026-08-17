@@ -8,6 +8,7 @@ import { Dialog } from "@/components/ui/dialog";
 import {
   backgroundAssets,
   getItems,
+  normalizeCatalogConfiguration,
   validateCatalogConfiguration,
 } from "@/features/dress-up/catalog";
 import {
@@ -68,8 +69,10 @@ export function DressUpStudio() {
     if (!saved) return defaultConfiguration;
     try {
       const parsed = dressUpConfigurationSchema.safeParse(JSON.parse(saved));
-      return parsed.success && !validateCatalogConfiguration(parsed.data).length
-        ? parsed.data
+      if (!parsed.success) return defaultConfiguration;
+      const normalized = normalizeCatalogConfiguration(parsed.data);
+      return !validateCatalogConfiguration(normalized).length
+        ? normalized
         : defaultConfiguration;
     } catch {
       return defaultConfiguration;
@@ -138,7 +141,7 @@ export function DressUpStudio() {
   const items = useMemo<StudioWardrobeItem[]>(() => {
     if (activePanel === "background") return [];
     const wardrobeItems = getItems(activeCharacter, activePanel);
-    return activePanel === "accessory"
+    return activePanel === "accessory" && wardrobeItems.length
       ? [{ id: "none", label: "None", swatch: "transparent" }, ...wardrobeItems]
       : wardrobeItems;
   }, [activeCharacter, activePanel]);
@@ -259,22 +262,35 @@ export function DressUpStudio() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ...configuration, turnstileToken }),
       });
-      const payload = (await response.json()) as {
+      const contentType = response.headers.get("content-type") ?? "";
+      let payload: {
         ok: boolean;
         data?: { url: string };
         error?: { code: string; message: string };
-      };
-      if (!response.ok || !payload.ok || !payload.data) {
+      } | null = null;
+      if (contentType.toLowerCase().includes("application/json")) {
+        try {
+          payload = (await response.json()) as {
+            ok: boolean;
+            data?: { url: string };
+            error?: { code: string; message: string };
+          };
+        } catch {
+          payload = null;
+        }
+      }
+      if (!response.ok || !payload?.ok || !payload.data) {
         if (
-          payload.error?.code === "TURNSTILE_REQUIRED" ||
-          payload.error?.code === "TURNSTILE_FAILED"
+          payload?.error?.code === "TURNSTILE_REQUIRED" ||
+          payload?.error?.code === "TURNSTILE_FAILED"
         ) {
           setChallengeRequired(true);
           setChallengeVersion((current) => current + 1);
           setTurnstileToken(null);
         }
         throw new Error(
-          payload.error?.message ?? "Something went wrong. Please try again.",
+          payload?.error?.message ??
+            "We could not publish your look right now. Your draft is still saved. Please try again.",
         );
       }
       setPublishedUrl(payload.data.url);

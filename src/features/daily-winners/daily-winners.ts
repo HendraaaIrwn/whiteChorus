@@ -6,7 +6,10 @@ import {
   getCompletedDayPeriod,
   getDayPeriod,
 } from "@/features/daily-winners/day-period";
-import { rankDailyCandidates } from "@/features/daily-winners/daily-ranking";
+import {
+  DAILY_SCORE_ORDER_BY,
+  rankDailyCandidates,
+} from "@/features/daily-winners/daily-ranking";
 import { recalculateActiveWeightedScores } from "@/features/ratings/recalculate-weighted-scores";
 import { getPrisma } from "@/server/database/prisma";
 import {
@@ -34,8 +37,14 @@ export type LiveDailyRanking = {
   generatedAt: string;
   timeZone: string;
   minimumRatings: number;
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
   items: DailyRankingItem[];
 };
+
+export const DAILY_RANKING_PAGE_SIZE = 10;
 
 export type DailyWinnerSnapshot = {
   id: string;
@@ -47,6 +56,23 @@ export type DailyWinnerSnapshot = {
   finalWeightedScore: number;
   dayStart: string;
   dayEnd: string;
+};
+
+export type DailyWinnersOverview = {
+  latestWinner: DailyWinnerSnapshot | null;
+  completedDays: DailyWinnerSnapshot[];
+};
+
+type DailyWinnerRecord = {
+  id: string;
+  dayKey: string;
+  shortCode: string;
+  winnerImagePath: string;
+  finalAverage: unknown;
+  finalRatingCount: number;
+  finalWeightedScore: unknown;
+  dayStart: Date;
+  dayEnd: Date;
 };
 
 export async function selectDailyWinner(
@@ -72,20 +98,14 @@ export async function selectDailyWinner(
   const candidate = await getPrisma().outfit.findFirst({
     where: {
       status: "PUBLISHED",
-      expiresAt: { gt: now },
+      expiresAt: { gt: period.end },
       isCompetitionEligible: true,
-      publishedAt: { gte: period.start, lt: period.end },
+      publishedAt: { lt: period.end },
       ratingCount: { gte: env.DAILY_MIN_RATINGS },
       finalImagePath: { not: null },
       dailyWinner: { is: null },
     },
-    orderBy: [
-      { weightedScore: "desc" },
-      { ratingCount: "desc" },
-      { ratingAverage: "desc" },
-      { publishedAt: "asc" },
-      { id: "asc" },
-    ],
+    orderBy: [...DAILY_SCORE_ORDER_BY],
   });
   if (!candidate?.finalImagePath)
     return { status: "no-eligible-winner" as const, dayKey: period.key };
@@ -136,36 +156,8 @@ export async function selectDailyWinner(
   }
 }
 
-export async function listDailyWinners(
-  take?: number,
-): Promise<DailyWinnerSnapshot[]> {
+function toDailyWinnerSnapshot(winner: DailyWinnerRecord): DailyWinnerSnapshot {
   const storage = getGeneratedAssetStorage();
-  const records = await getPrisma().dailyWinner.findMany({
-    orderBy: { dayStart: "desc" },
-    ...(take ? { take } : {}),
-  });
-  return records.map((winner) => ({
-    id: winner.id,
-    dayKey: winner.dayKey.trim(),
-    shortCode: winner.shortCode,
-    imageUrl:
-      publicConfig.assetMode === "production"
-        ? storage.publicUrl(winner.winnerImagePath)
-        : "",
-    finalAverage: Number(winner.finalAverage),
-    finalRatingCount: winner.finalRatingCount,
-    finalWeightedScore: Number(winner.finalWeightedScore),
-    dayStart: winner.dayStart.toISOString(),
-    dayEnd: winner.dayEnd.toISOString(),
-  }));
-}
-
-export async function getDailyWinner(dayKey: string) {
-  const storage = getGeneratedAssetStorage();
-  const winner = await getPrisma().dailyWinner.findUnique({
-    where: { dayKey },
-  });
-  if (!winner) return null;
   return {
     id: winner.id,
     dayKey: winner.dayKey.trim(),
@@ -182,36 +174,125 @@ export async function getDailyWinner(dayKey: string) {
   };
 }
 
-export async function getLatestDailyWinner() {
-  return (await listDailyWinners(1))[0] ?? null;
+export async function getDailyWinner(dayKey: string) {
+  const winner = await getPrisma().dailyWinner.findUnique({
+    where: { dayKey },
+  });
+  if (!winner) return null;
+  return toDailyWinnerSnapshot(winner);
 }
 
-export async function getLiveDailyRanking(
+export async function getDailyWinnersOverview(
   now = new Date(),
-  take = 10,
-): Promise<LiveDailyRanking> {
+): Promise<DailyWinnersOverview> {
+  const completedPeriod = getCompletedDayPeriod(
+    now,
+    getServerEnv().DAILY_TIMEZONE,
+  );
+  const records = await getPrisma().dailyWinner.findMany({
+    where: { dayEnd: { lte: completedPeriod.end } },
+    orderBy: { dayStart: "desc" },
+    take: 8,
+  });
+  const snapshots = records.map(toDailyWinnerSnapshot);
+  return {
+    latestWinner: snapshots[0] ?? null,
+    completedDays: snapshots.slice(1, 8),
+  };
+}
+
+export async function getLiveDailyRanking({
+  now = new Date(),
+  page = 1,
+}: {
+  now?: Date;
+  page?: number;
+} = {}): Promise<LiveDailyRanking> {
+  if (!Number.isInteger(page) || page <= 0) {
+    throw new RangeError("page must be a positive integer");
+  }
   const env = getServerEnv();
   const period = getDayPeriod(now, env.DAILY_TIMEZONE);
   const storage = getGeneratedAssetStorage();
-  const records = await getPrisma().outfit.findMany({
-    where: {
-      status: "PUBLISHED",
-      expiresAt: { gt: now },
-      isCompetitionEligible: true,
-      publishedAt: { gte: period.start, lt: period.end },
-      finalImagePath: { not: null },
-    },
-    select: {
-      id: true,
-      shortCode: true,
-      thumbnailPath: true,
-      ratingAverage: true,
-      ratingCount: true,
-      weightedScore: true,
-      publishedAt: true,
-    },
-  });
+  const database = getPrisma();
   const minimumRatings = env.DAILY_MIN_RATINGS;
+  const activeWhere = {
+    status: "PUBLISHED" as const,
+    expiresAt: { gt: now },
+    isCompetitionEligible: true,
+    finalImagePath: { not: null },
+  };
+  const [totalItems, eligibleItems] = await Promise.all([
+    database.outfit.count({ where: activeWhere }),
+    database.outfit.count({
+      where: {
+        ...activeWhere,
+        ratingCount: { gte: minimumRatings },
+      },
+    }),
+  ]);
+  const ineligibleItems = totalItems - eligibleItems;
+  const totalPages = Math.ceil(totalItems / DAILY_RANKING_PAGE_SIZE);
+  const resolvedPage = totalPages ? Math.min(page, totalPages) : 1;
+  const rankOffset = (resolvedPage - 1) * DAILY_RANKING_PAGE_SIZE;
+  const select = {
+    id: true,
+    shortCode: true,
+    thumbnailPath: true,
+    ratingAverage: true,
+    ratingCount: true,
+    weightedScore: true,
+    publishedAt: true,
+  };
+  const readGroup = (options: {
+    eligible: boolean;
+    skip: number;
+    take: number;
+  }) =>
+    options.take
+      ? database.outfit.findMany({
+          where: {
+            ...activeWhere,
+            ratingCount: options.eligible
+              ? { gte: minimumRatings }
+              : { lt: minimumRatings },
+          },
+          orderBy: [...DAILY_SCORE_ORDER_BY],
+          skip: options.skip,
+          take: options.take,
+          select,
+        })
+      : Promise.resolve([]);
+
+  let records: Awaited<ReturnType<typeof readGroup>> = [];
+  if (totalItems) {
+    if (rankOffset < eligibleItems) {
+      const eligibleTake = Math.min(
+        DAILY_RANKING_PAGE_SIZE,
+        eligibleItems - rankOffset,
+      );
+      const eligibleRecords = await readGroup({
+        eligible: true,
+        skip: rankOffset,
+        take: eligibleTake,
+      });
+      const ineligibleRecords = await readGroup({
+        eligible: false,
+        skip: 0,
+        take: Math.min(
+          DAILY_RANKING_PAGE_SIZE - eligibleRecords.length,
+          ineligibleItems,
+        ),
+      });
+      records = [...eligibleRecords, ...ineligibleRecords];
+    } else {
+      records = await readGroup({
+        eligible: false,
+        skip: rankOffset - eligibleItems,
+        take: DAILY_RANKING_PAGE_SIZE,
+      });
+    }
+  }
   const ranked = rankDailyCandidates(
     records.map((record) => ({
       ...record,
@@ -219,7 +300,7 @@ export async function getLiveDailyRanking(
       weightedScore: Number(record.weightedScore),
     })),
     minimumRatings,
-    take,
+    { rankOffset },
   );
 
   return {
@@ -229,6 +310,10 @@ export async function getLiveDailyRanking(
     generatedAt: now.toISOString(),
     timeZone: env.DAILY_TIMEZONE,
     minimumRatings,
+    page: resolvedPage,
+    pageSize: DAILY_RANKING_PAGE_SIZE,
+    totalItems,
+    totalPages,
     items: ranked.map((record) => ({
       id: record.id,
       rank: record.rank,

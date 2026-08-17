@@ -216,6 +216,7 @@ export function LookDetail({
               outfitId={outfit.id}
               shortCode={outfit.shortCode}
               downloadUrl={outfit.downloadUrl}
+              shareImageUrl={outfit.shareImageUrl}
               shareUrl={shareUrl}
               primaryAction={outfit.isOwner ? "download" : "share"}
             />

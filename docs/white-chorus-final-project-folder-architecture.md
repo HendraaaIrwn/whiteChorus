@@ -1066,14 +1066,15 @@ type DressUpAsset = {
     | "one-piece"
     | "shoes"
     | "accessory";
-  previewPath: string;
-  renderPaths: string[];
+  iconSrc: string;
+  assetSrcs: string[];
+  iconPresentation: "standard" | "framed-square";
   layerOrder: number;
   active: boolean;
 };
 ```
 
-`renderPaths` dapat memuat dua file rambut:
+`assetSrcs` dapat memuat dua file rambut:
 
 ```text
 hair-back
@@ -1678,11 +1679,12 @@ Contoh catalog:
   id: "a-hair-01",
   characterId: "character-a",
   category: "hair",
-  previewPath: "/dress-up/character-a/thumbnails/hair-01.webp",
-  renderPaths: [
+  iconSrc: "/dress-up/character-a/thumbnails/hair-01.webp",
+  assetSrcs: [
     "/dress-up/character-a/hair-back/hair-01-back.webp",
     "/dress-up/character-a/hair-front/hair-01-front.webp"
   ],
+  iconPresentation: "standard",
   layerOrder: 50,
   active: true
 }

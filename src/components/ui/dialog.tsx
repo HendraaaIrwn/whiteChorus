@@ -10,6 +10,7 @@ import {
 } from "@/components/motion/motion-presets";
 import { useHydratedReducedMotion } from "@/components/motion/use-hydrated-reduced-motion";
 import { IconButton } from "@/components/ui/icon-button";
+import { cn } from "@/lib/cn";
 
 export function Dialog({
   open,
@@ -17,6 +18,9 @@ export function Dialog({
   title,
   description,
   returnFocusSelector,
+  className,
+  panelClassName,
+  lockScroll = false,
   children,
 }: {
   open: boolean;
@@ -24,6 +28,9 @@ export function Dialog({
   title: string;
   description?: string;
   returnFocusSelector?: string;
+  className?: string;
+  panelClassName?: string;
+  lockScroll?: boolean;
   children: React.ReactNode;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -31,6 +38,15 @@ export function Dialog({
   const titleId = useId();
   const descriptionId = useId();
   const reduceMotion = useHydratedReducedMotion();
+
+  useEffect(() => {
+    if (!open || !lockScroll) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [lockScroll, open]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -58,7 +74,7 @@ export function Dialog({
   return (
     <dialog
       ref={dialogRef}
-      className="dialog"
+      className={cn("dialog", className)}
       aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined}
       onCancel={(event) => {
@@ -71,7 +87,7 @@ export function Dialog({
     >
       {open ? (
         <motion.div
-          className="dialog__panel"
+          className={cn("dialog__panel", panelClassName)}
           initial={reduceMotion ? false : { opacity: 0, y: 18, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{

@@ -104,16 +104,21 @@ describe("daily provisional ranking", () => {
     expect(after[0]).toMatchObject({ eligible: true, ratingsNeeded: 0 });
   });
 
-  it("caps the result without mutating the source candidates", () => {
+  it("returns the complete ranking with a global page offset without mutating candidates", () => {
     const source = [
       candidate("three", { weightedScore: 3 }),
       candidate("one", { weightedScore: 5 }),
       candidate("two", { weightedScore: 4 }),
     ];
 
-    expect(rankDailyCandidates(source, 5, 2).map(({ id }) => id)).toEqual([
-      "one",
-      "two",
+    expect(
+      rankDailyCandidates(source, 5, { rankOffset: 10 }).map(
+        ({ id, rank }) => ({ id, rank }),
+      ),
+    ).toEqual([
+      { id: "one", rank: 11 },
+      { id: "two", rank: 12 },
+      { id: "three", rank: 13 },
     ]);
     expect(source.map(({ id }) => id)).toEqual(["three", "one", "two"]);
   });

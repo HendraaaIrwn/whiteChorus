@@ -45,7 +45,7 @@ describe.skipIf(!runDatabaseTests)("cleanupOutfits", () => {
     );
     try {
       const first = await cleanupOutfits(now, storage);
-      expect(first.filesDeleted).toBe(4);
+      expect(first.filesDeleted).toBe(5);
       expect(storage.files.size).toBe(0);
       await expect(getOutfitDetail(outfit.id)).rejects.toMatchObject({
         code: "OUTFIT_EXPIRED",

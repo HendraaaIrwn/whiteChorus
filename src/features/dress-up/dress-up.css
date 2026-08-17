@@ -226,13 +226,19 @@
   height: 100%;
 }
 
-.studio-stage__background,
-.studio-production-layer {
+.studio-stage__background {
   max-width: none;
   object-fit: contain;
 }
 
+.studio-production-layer {
+  max-width: none;
+  object-fit: fill;
+  object-position: left top;
+}
+
 .studio-character-group {
+  inset: auto;
   transform-origin: center bottom;
 }
 
@@ -246,7 +252,7 @@
 
 .studio-character-group[data-active]::after {
   position: absolute;
-  z-index: 6;
+  z-index: 90;
   bottom: 8%;
   width: 27%;
   height: 3px;
@@ -617,6 +623,7 @@
     0 8px 18px rgb(44 46 52 / 10%);
 }
 
+.background-carousel__rail .item-thumbnail-frame,
 .background-carousel__rail .item-thumbnail,
 .background-carousel__rail .item-thumbnail-fallback {
   width: 100%;
@@ -691,7 +698,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .category-tabs button:not([aria-selected="true"]):not(:disabled):hover {
-    color: var(--studio-orange);
+    color: var(--studio-aqua-soft);
     transform: translateY(-1px);
   }
 }
@@ -713,84 +720,154 @@
 }
 
 .item-rail {
+  --studio-wardrobe-item-size: clamp(122px, calc(42vw - 10px), 150px);
   box-sizing: border-box;
-  display: grid;
+  display: flex;
   min-width: 0;
-  grid-auto-columns: clamp(92px, 24vw, 104px);
-  grid-auto-flow: column;
-  align-items: start;
-  gap: 10px;
+  min-height: calc(var(--studio-wardrobe-item-size) + 36px);
+  align-items: center;
+  gap: clamp(8px, 2.5vw, 12px);
   overflow-x: auto;
-  padding: 12px 6px;
-  margin-block: -12px;
-  scroll-padding-inline: 6px;
-  scroll-snap-type: x mandatory;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  padding: 22px 8px 14px;
+  margin-block: -14px -12px;
+  scroll-behavior: smooth;
+  scroll-padding-inline: 8px;
+  scroll-snap-type: x proximity;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
+  scrollbar-color: var(--studio-brand) transparent;
+}
+
+.item-rail::-webkit-scrollbar {
+  height: 6px;
+}
+
+.item-rail::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--studio-brand) 74%, transparent);
+}
+
+.item-rail::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .item-rail button {
   position: relative;
   z-index: 0;
   display: grid;
-  min-height: 112px;
+  width: var(--studio-wardrobe-item-size);
+  min-width: var(--studio-wardrobe-item-size);
+  height: var(--studio-wardrobe-item-size);
+  min-height: var(--studio-wardrobe-item-size);
+  flex: 0 0 var(--studio-wardrobe-item-size);
   place-items: center;
-  gap: 4px;
-  overflow: hidden;
-  padding: 16px 6px 8px;
-  border: 1px solid
-    color-mix(in srgb, var(--studio-line) 44%, var(--studio-bg-card));
-  border-radius: 18px;
+  aspect-ratio: 1 / 1;
+  overflow: visible;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
   color: var(--studio-fg-heading);
-  background: var(--studio-wardrobe-card);
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.035em;
+  background: transparent;
+  box-shadow: none;
   scroll-snap-align: center;
   cursor: pointer;
-  transition:
-    background-color 260ms,
-    border-color 260ms,
-    box-shadow 220ms;
-}
-
-.item-rail button > strong {
-  color: var(--studio-fg-heading);
+  isolation: isolate;
 }
 
 .item-rail button.is-selected {
-  z-index: 1;
-  border-color: var(--studio-fg-heading);
-  border-radius: 18px;
-  background: var(--studio-orange);
-  box-shadow: inset 0 0 0 3px var(--studio-bg-page);
+  z-index: 3;
 }
 
-.item-rail__index {
+.item-rail button:focus-visible {
+  outline: 3px solid var(--studio-brand);
+  outline-offset: 4px;
+}
+
+.wardrobe-icon__hover-backplate,
+.wardrobe-icon__selection-frame {
   position: absolute;
-  top: 7px;
-  left: 8px;
-  color: var(--studio-brand);
-  font-size: 0.58rem;
-  letter-spacing: 0.1em;
+  inset: 4%;
+  z-index: 0;
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+  pointer-events: none;
+}
+
+.wardrobe-icon__hover-backplate {
+  border: 2px solid color-mix(in srgb, var(--studio-brand) 82%, transparent);
+  opacity: 0;
+  background: color-mix(in srgb, var(--studio-aqua-soft) 78%, transparent);
+  box-shadow: 0 10px 24px rgb(44 46 52 / 12%);
+  transform: scale(0.92);
+  transition:
+    opacity 180ms var(--studio-ease),
+    transform 240ms var(--studio-ease);
+}
+
+.wardrobe-icon__selection-frame {
+  border: 3px solid var(--studio-brand);
+  border-radius: 16px;
+  background: color-mix(
+    in srgb,
+    var(--studio-orange) 78%,
+    var(--studio-aqua-soft)
+  );
+  box-shadow:
+    0 0 0 4px var(--studio-wardrobe-surface),
+    0 0 0 7px color-mix(in srgb, var(--studio-aqua-soft) 88%, transparent),
+    0 14px 30px rgb(44 46 52 / 16%);
+}
+
+.wardrobe-icon__artwork {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 92%;
+  height: 92%;
+  place-items: center;
+}
+
+.item-thumbnail-frame {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  place-items: center;
+  overflow: hidden;
 }
 
 .item-thumbnail {
   width: 100%;
-  height: 68px;
+  height: 100%;
+  max-width: none;
   object-fit: contain;
+  object-position: center;
+}
+
+.item-thumbnail-frame--framed-square .item-thumbnail {
+  transform: scale(2.1);
 }
 
 .item-none {
   display: grid;
-  width: 72px;
-  height: 68px;
+  width: 58%;
+  height: 58%;
+  min-height: 0;
   place-items: center;
 }
 
 .item-thumbnail-fallback {
   display: grid;
-  width: min(80px, 84%);
-  height: 68px;
+  z-index: 2;
+  width: min(84px, 68%);
+  height: min(84px, 68%);
+  align-self: center;
   place-items: center;
   border: 1px dashed var(--studio-fg-heading);
   border-radius: 18px;
@@ -803,57 +880,28 @@
 }
 
 .item-none svg {
-  width: 56px;
+  width: 100%;
   color: var(--studio-rust);
-  stroke-width: 4;
-}
-
-.item-check {
-  position: absolute;
-  top: 7px;
-  right: 7px;
-  display: grid;
-  width: 22px;
-  height: 22px;
-  place-items: center;
-  border: 1px solid var(--studio-fg-heading);
-  border-radius: 50%;
-  color: var(--studio-bg-page);
-  background: var(--studio-brand);
-}
-
-.item-check svg {
-  width: 12px;
   stroke-width: 3;
 }
 
-.item-rail[data-randomizing] .item-thumbnail,
-.item-rail[data-randomizing] .item-thumbnail-fallback,
-.item-rail[data-randomizing] .item-none {
+.item-rail[data-randomizing] .wardrobe-icon__artwork {
   animation: studio-item-shuffle 680ms var(--studio-ease) both;
 }
 
-.item-rail[data-randomizing]
-  button:nth-child(2)
-  > :is(.item-thumbnail, .item-thumbnail-fallback, .item-none) {
+.item-rail[data-randomizing] button:nth-child(2) > .wardrobe-icon__artwork {
   animation-delay: 35ms;
 }
 
-.item-rail[data-randomizing]
-  button:nth-child(3)
-  > :is(.item-thumbnail, .item-thumbnail-fallback, .item-none) {
+.item-rail[data-randomizing] button:nth-child(3) > .wardrobe-icon__artwork {
   animation-delay: 70ms;
 }
 
-.item-rail[data-randomizing]
-  button:nth-child(4)
-  > :is(.item-thumbnail, .item-thumbnail-fallback, .item-none) {
+.item-rail[data-randomizing] button:nth-child(4) > .wardrobe-icon__artwork {
   animation-delay: 105ms;
 }
 
-.item-rail[data-randomizing]
-  button:nth-child(5)
-  > :is(.item-thumbnail, .item-thumbnail-fallback, .item-none) {
+.item-rail[data-randomizing] button:nth-child(5) > .wardrobe-icon__artwork {
   animation-delay: 140ms;
 }
 
@@ -1179,21 +1227,30 @@ html.studio-custom-cursor-ready .site-footer--studio a {
       0 10px 22px rgb(44 46 52 / 12%);
   }
 
-  .item-rail button:hover,
-  .item-rail button:focus-visible {
+  .item-rail button:not(.is-selected):hover,
+  .item-rail button:not(.is-selected):focus-visible {
     z-index: 2;
-    border-color: var(--studio-fg-heading);
-    background: color-mix(
-      in srgb,
-      var(--studio-aqua-soft) 46%,
-      var(--studio-wardrobe-card)
-    );
-    box-shadow: 0 8px 20px rgb(44 46 52 / 8%);
   }
 
   .item-rail button.is-selected:hover,
   .item-rail button.is-selected:focus-visible {
-    background: var(--studio-orange);
+    z-index: 4;
+  }
+
+  .item-rail
+    button:not(.is-selected):is(:hover, :focus-visible)
+    .wardrobe-icon__hover-backplate {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .item-rail
+    button.is-selected:is(:hover, :focus-visible)
+    .wardrobe-icon__selection-frame {
+    box-shadow:
+      0 0 0 4px var(--studio-wardrobe-surface),
+      0 0 0 8px var(--studio-aqua-soft),
+      0 20px 40px rgb(44 46 52 / 20%);
   }
 
   .studio-action.button:hover:not(:disabled)
@@ -1267,7 +1324,8 @@ html.studio-custom-cursor-ready .site-footer--studio a {
   }
 
   .item-rail {
-    grid-auto-columns: clamp(96px, 10vw, 108px);
+    --studio-wardrobe-item-size: clamp(130px, calc(18vw - 10px), 158px);
+    gap: clamp(10px, 1.4vw, 16px);
   }
 
   .studio-action-dock {
@@ -1351,18 +1409,26 @@ html.studio-custom-cursor-ready .site-footer--studio a {
     font-size: clamp(2.6rem, 5vw, 3.8rem);
   }
 
+  .item-panel {
+    contain: size;
+  }
+
   .studio-editorial-footer__link {
     font-size: clamp(8.5rem, 13.7vw, 8.75rem);
   }
 
   .item-rail {
-    height: 100%;
-    grid-auto-columns: clamp(96px, 22%, 104px);
-    align-items: stretch;
+    min-height: 0;
+    height: max(calc(100% + 15px), 166px);
+    align-items: center;
   }
 
   .item-rail button {
-    height: 100%;
+    width: auto;
+    min-width: 0;
+    height: min(var(--studio-wardrobe-item-size), 100%);
+    min-height: 0;
+    flex: 0 0 auto;
   }
 
   .studio-action-dock {
@@ -1439,24 +1505,18 @@ html.studio-custom-cursor-ready .site-footer--studio a {
   }
 
   .item-rail {
+    --studio-wardrobe-item-size: clamp(134px, calc(12vw - 10px), 166px);
+    min-height: 0;
     height: 100%;
-    grid-auto-columns: clamp(100px, 17%, 112px);
-    align-items: stretch;
+    align-items: center;
   }
 
   .item-rail button {
-    height: 100%;
-  }
-
-  .item-thumbnail,
-  .item-none,
-  .item-thumbnail-fallback {
-    height: clamp(82px, 10vh, 112px);
-  }
-
-  .item-none,
-  .item-thumbnail-fallback {
-    width: min(92px, 84%);
+    width: auto;
+    min-width: 0;
+    height: min(var(--studio-wardrobe-item-size), 100%);
+    min-height: 0;
+    flex: 0 0 auto;
   }
 
   .item-thumbnail-fallback svg {
@@ -1627,9 +1687,8 @@ html.studio-custom-cursor-ready .site-footer--studio a {
 
   .character-switcher button:active,
   .background-carousel__control:active:not(:disabled),
-  .item-rail button:active,
   .studio-action.button:active:not(:disabled) {
-    transform: scale(0.985);
+    transform: scale(0.975);
   }
 }
 
@@ -1660,7 +1719,19 @@ html.studio-custom-cursor-ready .site-footer--studio a {
   .studio-character-group,
   .background-carousel__control,
   .background-carousel__rail > button,
-  .item-rail button {
+  .item-rail button,
+  .item-thumbnail-frame,
+  .wardrobe-icon__artwork,
+  .wardrobe-icon__hover-backplate,
+  .wardrobe-icon__selection-frame {
     transform: none !important;
+  }
+
+  .item-thumbnail-frame--standard .item-thumbnail {
+    transform: none !important;
+  }
+
+  .item-thumbnail-frame--framed-square .item-thumbnail {
+    transform: scale(2.1) !important;
   }
 }

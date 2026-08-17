@@ -233,31 +233,321 @@ test("keeps detail rating keyboard-operable with success and failure feedback", 
   await expect(twoStars).not.toBeChecked();
 });
 
-test("preserves share channels and download without equal-weight action clutter", async ({
+test("opens an Instagram-first framed share dialog before sharing", async ({
   page,
-}, testInfo) => {
-  test.skip(
-    testInfo.project.name !== "chromium",
-    "Action disclosure is covered once in desktop Chromium.",
-  );
-
+}) => {
   await openFirstLook(page);
   const actions = page.locator(".look-detail__actions");
-  await expect(
-    actions.getByRole("button", { name: /SHARE OUTFIT/ }),
-  ).toBeVisible();
+  const shareButton = actions.getByRole("button", { name: /SHARE OUTFIT/ });
+  await expect(shareButton).toBeVisible();
   await expect(
     actions.getByRole("button", { name: /DOWNLOAD IMAGE/ }),
   ).toBeVisible();
 
-  await actions.getByText("MORE WAYS TO SHARE").click();
+  await shareButton.click();
+  const dialog = page.getByRole("dialog", { name: "SHARE YOUR LOOK" });
+  await expect(dialog).toBeVisible();
   await expect(
-    actions.getByRole("button", { name: /COPY LINK/ }),
+    dialog.getByRole("img", { name: /Framed White Chorus Look/i }),
   ).toBeVisible();
-  for (const platform of ["WHATSAPP", "FACEBOOK", "X", "TELEGRAM"]) {
+  await expect(
+    dialog.getByRole("button", { name: "SHARE TO INSTAGRAM" }),
+  ).toBeVisible();
+  await expect(dialog.getByRole("button", { name: /COPY LINK/ })).toBeVisible();
+  for (const platform of ["WHATSAPP", "FACEBOOK", "X"]) {
     await expect(
-      actions.getByRole("link", { name: platform, exact: true }),
+      dialog.getByRole("link", { name: platform, exact: true }),
     ).toBeVisible();
+  }
+  const currentOutfitPath = new URL(page.url()).pathname;
+  const facebookIntent = new URL(
+    (await dialog
+      .getByRole("link", { name: "FACEBOOK", exact: true })
+      .getAttribute("href"))!,
+  );
+  const xIntent = new URL(
+    (await dialog
+      .getByRole("link", { name: "X", exact: true })
+      .getAttribute("href"))!,
+  );
+  const whatsappIntent = new URL(
+    (await dialog
+      .getByRole("link", { name: "WHATSAPP", exact: true })
+      .getAttribute("href"))!,
+  );
+  expect(facebookIntent.hostname).toBe("www.facebook.com");
+  expect(new URL(facebookIntent.searchParams.get("u")!).pathname).toBe(
+    currentOutfitPath,
+  );
+  expect(xIntent.hostname).toBe("twitter.com");
+  expect(xIntent.searchParams.get("text")).toMatch(/^Rate White Chorus Look #/);
+  expect(new URL(xIntent.searchParams.get("url")!).pathname).toBe(
+    currentOutfitPath,
+  );
+  expect(whatsappIntent.hostname).toBe("wa.me");
+  expect(whatsappIntent.searchParams.get("text")).toContain(currentOutfitPath);
+  await expect(dialog).not.toContainText("TELEGRAM");
+  await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
+
+  await dialog.getByRole("button", { name: "CANCEL" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(shareButton).toBeFocused();
+  await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+});
+
+test("shares the framed PNG through the native file share path", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "Native file payload is covered once in desktop Chromium.",
+  );
+  await page.addInitScript(() => {
+    const calls: Array<Record<string, unknown>> = [];
+    Object.defineProperty(window, "__whiteChorusShareCalls", {
+      configurable: true,
+      value: calls,
+    });
+    Object.defineProperty(navigator, "canShare", {
+      configurable: true,
+      value: (data: ShareData) => Boolean(data.files?.length),
+    });
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: async (data: ShareData) => {
+        const file = data.files?.[0];
+        calls.push({
+          fileCount: data.files?.length ?? 0,
+          fileName: file?.name,
+          fileType: file?.type,
+          title: data.title,
+          text: data.text,
+          url: data.url,
+        });
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      },
+    });
+  });
+
+  await openFirstLook(page);
+  const shareButton = page.getByRole("button", { name: /SHARE OUTFIT/ });
+  await shareButton.click();
+  await expect(
+    page.getByRole("img", { name: /Framed White Chorus Look/i }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (
+          window as unknown as Window & {
+            __whiteChorusShareCalls: Array<Record<string, unknown>>;
+          }
+        ).__whiteChorusShareCalls,
+    ),
+  ).toEqual([]);
+
+  const instagramButton = page
+    .locator(".share-dialog__primary-actions .button")
+    .first();
+  await instagramButton.click();
+  await expect(instagramButton).toBeDisabled();
+  await instagramButton.click({ force: true });
+  await expect(page.getByRole("dialog")).toBeHidden();
+  expect(
+    await page.evaluate(
+      () =>
+        (
+          window as unknown as Window & {
+            __whiteChorusShareCalls: Array<Record<string, unknown>>;
+          }
+        ).__whiteChorusShareCalls,
+    ),
+  ).toEqual([
+    expect.objectContaining({
+      fileCount: 1,
+      fileName: expect.stringMatching(/^white-chorus-.+\.png$/),
+      fileType: "image/png",
+      title: expect.stringMatching(/^White Chorus Look #/),
+      text: expect.stringMatching(/^Rate White Chorus Look #/),
+      url: expect.stringMatching(/^https?:\/\/.+\/outfits\//),
+    }),
+  ]);
+  await expect(shareButton).toBeFocused();
+});
+
+test("saves the framed image when native file sharing is unavailable", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "Download fallback is covered once in desktop Chromium.",
+  );
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "canShare", {
+      configurable: true,
+      value: () => false,
+    });
+  });
+
+  await openFirstLook(page);
+  await page.getByRole("button", { name: /SHARE OUTFIT/ }).click();
+  await expect(
+    page.getByRole("img", { name: /Framed White Chorus Look/i }),
+  ).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "SHARE TO INSTAGRAM" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^white-chorus-.+\.png$/);
+  await expect(
+    page.getByText("IMAGE SAVED — OPEN INSTAGRAM TO SHARE"),
+  ).toBeVisible();
+  await expect(page.getByRole("dialog")).toBeVisible();
+});
+
+test("copies the public outfit URL once and confirms success", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "Clipboard behavior is covered once in Chromium.",
+  );
+  await page.addInitScript(() => {
+    const writes: string[] = [];
+    Object.defineProperty(window, "__whiteChorusClipboardWrites", {
+      configurable: true,
+      value: writes,
+    });
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => {
+          writes.push(value);
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        },
+      },
+    });
+  });
+
+  await openFirstLook(page);
+  await page.getByRole("button", { name: /SHARE OUTFIT/ }).click();
+  await expect(
+    page.getByRole("img", { name: /Framed White Chorus Look/i }),
+  ).toBeVisible();
+  const copyButton = page.getByRole("button", { name: "COPY LINK" });
+  await copyButton.click();
+  await expect(copyButton).toBeDisabled();
+  await copyButton.click({ force: true });
+  await expect(page.getByText("LINK COPIED")).toBeVisible();
+
+  const writes = await page.evaluate(
+    () =>
+      (
+        window as unknown as Window & {
+          __whiteChorusClipboardWrites: string[];
+        }
+      ).__whiteChorusClipboardWrites,
+  );
+  expect(writes).toHaveLength(1);
+  expect(new URL(writes[0]).pathname).toBe(new URL(page.url()).pathname);
+});
+
+test("uses the framed share image for outfit social metadata", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "Outfit social metadata is covered once in Chromium.",
+  );
+
+  const href = await openFirstLook(page);
+  const outfitId = new URL(href, page.url()).pathname.split("/").at(-1);
+  const expectedImagePath = `/api/outfits/${outfitId}/share-image`;
+  const ogImageUrl = await page
+    .locator('meta[property="og:image"]')
+    .getAttribute("content");
+  const twitterImageUrl = await page
+    .locator('meta[name="twitter:image"]')
+    .getAttribute("content");
+
+  expect(new URL(ogImageUrl!).pathname).toBe(expectedImagePath);
+  expect(new URL(twitterImageUrl!).pathname).toBe(expectedImagePath);
+});
+
+test("shows share loading, error, retry, Escape, and backdrop behavior", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "Share dialog failure and dismissal states run once in Chromium.",
+  );
+  let requestCount = 0;
+  await page.route("**/api/outfits/*/share-image", async (route) => {
+    requestCount += 1;
+    if (requestCount === 1) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: false }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await openFirstLook(page);
+  const shareButton = page.getByRole("button", { name: /SHARE OUTFIT/ });
+  await shareButton.click();
+  const dialog = page.getByRole("dialog", { name: "SHARE YOUR LOOK" });
+  await expect(dialog.locator(".share-dialog__skeleton")).toBeVisible();
+  await expect(dialog.getByText("PREVIEW UNAVAILABLE")).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: "SHARE TO INSTAGRAM" }),
+  ).toBeDisabled();
+  await dialog.getByRole("button", { name: "RETRY" }).click();
+  await expect(
+    dialog.getByRole("img", { name: /Framed White Chorus Look/i }),
+  ).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(shareButton).toBeFocused();
+
+  await shareButton.click();
+  await expect(dialog).toBeVisible();
+  await dialog.evaluate((element: HTMLDialogElement) => element.click());
+  await expect(dialog).toBeHidden();
+  await expect(shareButton).toBeFocused();
+});
+
+test("keeps the framed share dialog inside every acceptance viewport", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "The share-dialog responsive matrix runs once in Chromium.",
+  );
+  await page.setViewportSize(detailViewports[0]);
+  await openFirstLook(page);
+
+  for (const viewport of detailViewports) {
+    await page.setViewportSize(viewport);
+    await page.getByRole("button", { name: /SHARE OUTFIT/ }).click();
+    const dialog = page.getByRole("dialog", { name: "SHARE YOUR LOOK" });
+    await expect(
+      dialog.getByRole("img", { name: /Framed White Chorus Look/i }),
+    ).toBeVisible();
+    const panel = await dialog.locator(".share-dialog__panel").boundingBox();
+    expect(panel).not.toBeNull();
+    expect(panel!.x).toBeGreaterThanOrEqual(0);
+    expect(panel!.y).toBeGreaterThanOrEqual(0);
+    expect(panel!.x + panel!.width).toBeLessThanOrEqual(viewport.width);
+    expect(panel!.height).toBeLessThanOrEqual(viewport.height);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(viewport.width);
+    await dialog.getByRole("button", { name: "CANCEL" }).click();
+    await expect(dialog).toBeHidden();
   }
 });
 

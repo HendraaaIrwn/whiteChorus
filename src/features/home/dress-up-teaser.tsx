@@ -123,17 +123,17 @@ export function DressUpTeaser() {
             aria-hidden="true"
           />
           <AnimatePresence mode="popLayout" initial={false}>
-            {background?.renderPaths[0] ? (
+            {background?.assetSrcs[0] ? (
               <motion.div
                 className="home-teaser__background"
-                key={background.renderPaths[0]}
+                key={background.assetSrcs[0]}
                 initial={reduceMotion ? false : { opacity: 0, scale: 1.03 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: reduceMotion ? 0 : 0.28 }}
               >
                 <Image
-                  src={background.renderPaths[0]}
+                  src={background.assetSrcs[0]}
                   alt=""
                   fill
                   sizes="(max-width: 767px) 94vw, 58vw"
@@ -302,7 +302,7 @@ export function DressUpTeaser() {
                   />
                 ) : null}
                 <Image
-                  src={item.previewPath}
+                  src={item.iconSrc}
                   alt=""
                   width={180}
                   height={180}

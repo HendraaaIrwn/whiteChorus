@@ -19,7 +19,7 @@ function hash(value: string): string {
 }
 
 describe.skipIf(!runDatabaseTests)("publishOutfit", () => {
-  it("publishes four artifacts, rejects duplicates, and leaves failures private", async () => {
+  it("publishes five artifacts, rejects duplicates, and leaves failures private", async () => {
     const now = new Date();
     const guests = await Promise.all(
       ["success", "failure"].map((label) =>
@@ -46,7 +46,7 @@ describe.skipIf(!runDatabaseTests)("publishOutfit", () => {
       );
       expect(published.status).toBe("PUBLISHED");
       expect(published.shortCode).toMatch(/^[A-Z0-9]{4,12}$/);
-      expect(storage.files.size).toBe(4);
+      expect(storage.files.size).toBe(5);
       await expect(
         publishOutfit(guests[0]!.id, defaultConfiguration, dependencies),
       ).rejects.toMatchObject({ code: "DUPLICATE_SUBMISSION" });
@@ -62,7 +62,7 @@ describe.skipIf(!runDatabaseTests)("publishOutfit", () => {
       });
       expect(failed.status).toBe("FAILED");
       expect(failed.finalImagePath).toBeNull();
-      expect(storage.files.size).toBe(4);
+      expect(storage.files.size).toBe(5);
     } finally {
       await prisma!.outfit.deleteMany({
         where: { guestId: { in: guests.map((guest) => guest.id) } },

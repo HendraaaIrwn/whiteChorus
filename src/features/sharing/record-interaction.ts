@@ -15,7 +15,7 @@ export const shareSchema = z
       "whatsapp",
       "facebook",
       "x",
-      "telegram",
+      "instagram",
     ]),
   })
   .strict();
@@ -25,7 +25,7 @@ const interactionType = {
   whatsapp: "WHATSAPP",
   facebook: "FACEBOOK",
   x: "X",
-  telegram: "TELEGRAM",
+  instagram: "INSTAGRAM",
 } as const;
 
 export async function recordInteraction(

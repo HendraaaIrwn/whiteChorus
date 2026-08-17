@@ -78,7 +78,7 @@ export function mergeDailyRanking(
   current: LiveDailyRankingData | null,
   next: LiveDailyRankingData,
 ) {
-  if (!current) return next;
+  if (!current || current.page !== next.page) return next;
   const currentById = new Map(current.items.map((item) => [item.id, item]));
   return {
     ...next,
@@ -87,6 +87,95 @@ export function mergeDailyRanking(
       return previous && rankingItemEqual(previous, item) ? previous : item;
     }),
   };
+}
+
+type PaginationItem = number | "ellipsis-start" | "ellipsis-end";
+
+function getPaginationItems(
+  page: number,
+  totalPages: number,
+): PaginationItem[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+  if (page <= 4) return [1, 2, 3, 4, 5, "ellipsis-end", totalPages];
+  if (page >= totalPages - 3) {
+    return [
+      1,
+      "ellipsis-start",
+      totalPages - 4,
+      totalPages - 3,
+      totalPages - 2,
+      totalPages - 1,
+      totalPages,
+    ];
+  }
+  return [
+    1,
+    "ellipsis-start",
+    page - 1,
+    page,
+    page + 1,
+    "ellipsis-end",
+    totalPages,
+  ];
+}
+
+function RankingPagination({
+  onPageChange,
+  pendingPage,
+  ranking,
+}: {
+  onPageChange: (page: number) => void;
+  pendingPage: number | null;
+  ranking: LiveDailyRankingData;
+}) {
+  if (ranking.totalPages <= 1) return null;
+  const loadingLabel = pendingPage
+    ? `Loading ranking page ${pendingPage}`
+    : `Ranking page ${ranking.page} of ${ranking.totalPages}`;
+
+  return (
+    <nav className="live-ranking__pagination" aria-label="Live ranking pages">
+      <span className="live-ranking__pagination-status" aria-live="polite">
+        {loadingLabel}
+      </span>
+      <button
+        type="button"
+        onClick={() => onPageChange(ranking.page - 1)}
+        disabled={ranking.page <= 1}
+      >
+        <span aria-hidden="true">←</span> PREVIOUS
+      </button>
+      <span className="live-ranking__pagination-pages">
+        {getPaginationItems(ranking.page, ranking.totalPages).map((item) =>
+          typeof item === "number" ? (
+            <button
+              type="button"
+              key={item}
+              aria-current={item === ranking.page ? "page" : undefined}
+              aria-label={`Ranking page ${item}`}
+              onClick={() => onPageChange(item)}
+              data-pending={pendingPage === item || undefined}
+            >
+              {String(item).padStart(2, "0")}
+            </button>
+          ) : (
+            <span key={item} aria-hidden="true">
+              …
+            </span>
+          ),
+        )}
+      </span>
+      <button
+        type="button"
+        onClick={() => onPageChange(ranking.page + 1)}
+        disabled={ranking.page >= ranking.totalPages}
+      >
+        NEXT <span aria-hidden="true">→</span>
+      </button>
+    </nav>
+  );
 }
 
 const RankingEntry = memo(function RankingEntry({
@@ -231,34 +320,63 @@ export function LiveDailyRanking({
   const [ranking, setRanking] = useState(initialRanking);
   const [refreshFailed, setRefreshFailed] = useState(!initialRanking);
   const [refreshing, setRefreshing] = useState(false);
+  const [pendingPage, setPendingPage] = useState<number | null>(null);
+  const pageRef = useRef(initialRanking?.page ?? 1);
   const requestRef = useRef<AbortController | null>(null);
 
-  const refresh = useCallback(async () => {
-    if (requestRef.current) return;
-    const controller = new AbortController();
-    requestRef.current = controller;
-    setRefreshing(true);
-    try {
-      const response = await fetch("/api/daily-winners", {
-        cache: "no-store",
-        signal: controller.signal,
-      });
-      if (!response.ok) throw new Error("Ranking refresh failed");
-      const body = (await response.json()) as {
-        data?: { ranking?: LiveDailyRankingData };
-      };
-      if (!body.data?.ranking) throw new Error("Ranking payload missing");
-      setRanking((current) => mergeDailyRanking(current, body.data!.ranking!));
-      setRefreshFailed(false);
-    } catch (error) {
-      if (!(error instanceof DOMException && error.name === "AbortError")) {
-        setRefreshFailed(true);
+  const refresh = useCallback(
+    async (requestedPage = pageRef.current, prioritize = false) => {
+      if (requestRef.current) {
+        if (!prioritize) return;
+        requestRef.current.abort();
       }
-    } finally {
-      if (requestRef.current === controller) requestRef.current = null;
-      setRefreshing(false);
-    }
-  }, []);
+      const controller = new AbortController();
+      requestRef.current = controller;
+      setRefreshing(true);
+      if (prioritize) setPendingPage(requestedPage);
+      try {
+        const response = await fetch(
+          `/api/daily-winners?page=${requestedPage}`,
+          {
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
+        if (!response.ok) throw new Error("Ranking refresh failed");
+        const body = (await response.json()) as {
+          data?: { ranking?: LiveDailyRankingData };
+        };
+        if (!body.data?.ranking) throw new Error("Ranking payload missing");
+        if (requestRef.current !== controller) return;
+        const nextRanking = body.data.ranking;
+        pageRef.current = nextRanking.page;
+        setRanking((current) => mergeDailyRanking(current, nextRanking));
+        setRefreshFailed(false);
+      } catch (error) {
+        if (
+          requestRef.current === controller &&
+          !(error instanceof DOMException && error.name === "AbortError")
+        ) {
+          setRefreshFailed(true);
+        }
+      } finally {
+        if (requestRef.current === controller) {
+          requestRef.current = null;
+          setRefreshing(false);
+          setPendingPage(null);
+        }
+      }
+    },
+    [],
+  );
+
+  const changePage = useCallback(
+    (page: number) => {
+      if (page === pageRef.current && !pendingPage) return;
+      void refresh(page, true);
+    },
+    [pendingPage, refresh],
+  );
 
   useEffect(() => {
     const initialTimer = window.setTimeout(() => void refresh(), 0);
@@ -276,7 +394,11 @@ export function LiveDailyRanking({
   }, [refresh]);
 
   return (
-    <section className="live-ranking" aria-labelledby="live-ranking-title">
+    <section
+      className="live-ranking"
+      aria-labelledby="live-ranking-title"
+      aria-busy={refreshing}
+    >
       <div className="winner-container">
         <div className="winner-grid-system live-ranking__heading">
           <span className="winner-label">02 · CURRENT COMPETITION</span>
@@ -291,8 +413,9 @@ export function LiveDailyRanking({
               <i aria-hidden="true" /> LIVE · PROVISIONAL
             </span>
             <p>
-              This is the active race—not a finalized winner. Positions move
-              only when real rating data changes.
+              This is the active race across the entire competition pool—not a
+              finalized winner. Positions move only when real rating data
+              changes.
             </p>
           </div>
         </div>
@@ -335,6 +458,19 @@ export function LiveDailyRanking({
               </span>
             </div>
 
+            <div className="live-ranking__page-summary">
+              <span>
+                PAGE {String(ranking.page).padStart(2, "0")}
+                {ranking.totalPages
+                  ? ` OF ${String(ranking.totalPages).padStart(2, "0")}`
+                  : ""}
+              </span>
+              <span>
+                {ranking.totalItems} ACTIVE{" "}
+                {ranking.totalItems === 1 ? "LOOK" : "LOOKS"}
+              </span>
+            </div>
+
             {ranking.items.length ? (
               <motion.ol className="live-ranking__list" layout={!reduceMotion}>
                 {ranking.items.map((item) => (
@@ -348,8 +484,8 @@ export function LiveDailyRanking({
             ) : (
               <div className="live-ranking__empty">
                 <div>
-                  <span className="winner-label">OPEN POSITION · 01</span>
-                  <h3>TODAY&apos;S CHORUS IS JUST GETTING STARTED.</h3>
+                  <span className="winner-label">ACTIVE POOL · OPEN</span>
+                  <h3>THE ACTIVE CHORUS IS WAITING FOR ITS FIRST LOOK.</h3>
                   <p>Publish a look to enter the real provisional ranking.</p>
                   <Link
                     className="winner-editorial-link"
@@ -363,6 +499,12 @@ export function LiveDailyRanking({
                 <ThreadStroke aria-hidden="true" />
               </div>
             )}
+
+            <RankingPagination
+              ranking={ranking}
+              pendingPage={pendingPage}
+              onPageChange={changePage}
+            />
 
             <RankingExplanation minimumRatings={ranking.minimumRatings} />
           </>

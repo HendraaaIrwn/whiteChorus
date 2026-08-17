@@ -14,6 +14,14 @@ export type RankedDailyCandidate = DailyRankingCandidate & {
   ratingsNeeded: number;
 };
 
+export const DAILY_SCORE_ORDER_BY = [
+  { weightedScore: "desc" },
+  { ratingCount: "desc" },
+  { ratingAverage: "desc" },
+  { publishedAt: "asc" },
+  { id: "asc" },
+] as const;
+
 function compareCandidates(
   left: DailyRankingCandidate,
   right: DailyRankingCandidate,
@@ -46,23 +54,22 @@ function compareCandidates(
 export function rankDailyCandidates(
   candidates: DailyRankingCandidate[],
   minimumRatings: number,
-  take = 10,
+  { rankOffset = 0 }: { rankOffset?: number } = {},
 ): RankedDailyCandidate[] {
   if (!Number.isInteger(minimumRatings) || minimumRatings <= 0) {
     throw new RangeError("minimumRatings must be a positive integer");
   }
-  if (!Number.isInteger(take) || take < 0) {
-    throw new RangeError("take must be a non-negative integer");
+  if (!Number.isInteger(rankOffset) || rankOffset < 0) {
+    throw new RangeError("rankOffset must be a non-negative integer");
   }
 
   return [...candidates]
     .sort((left, right) => compareCandidates(left, right, minimumRatings))
-    .slice(0, take)
     .map((candidate, index) => {
       const eligible = candidate.ratingCount >= minimumRatings;
       return {
         ...candidate,
-        rank: index + 1,
+        rank: rankOffset + index + 1,
         eligible,
         ratingsNeeded: eligible ? 0 : minimumRatings - candidate.ratingCount,
       };

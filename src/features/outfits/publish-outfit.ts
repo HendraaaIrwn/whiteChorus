@@ -9,7 +9,10 @@ import {
   cloudflareTurnstileVerifier,
   type TurnstileVerifier,
 } from "@/features/abuse-protection/turnstile";
-import { validateCatalogConfiguration } from "@/features/dress-up/catalog";
+import {
+  normalizeCatalogConfiguration,
+  validateCatalogConfiguration,
+} from "@/features/dress-up/catalog";
 import {
   dressUpConfigurationSchema,
   isPublishReady,
@@ -19,10 +22,7 @@ import {
 import { configurationHash } from "@/features/outfits/configuration-hash";
 import { getPrisma } from "@/server/database/prisma";
 import { DomainError } from "@/server/http/domain-error";
-import {
-  sharpOutfitRenderer,
-  type OutfitRenderer,
-} from "@/server/rendering/outfit-renderer";
+import type { OutfitRenderer } from "@/server/rendering/outfit-renderer";
 import {
   getGeneratedAssetStorage,
   type GeneratedAssetStorage,
@@ -39,6 +39,14 @@ type Dependencies = {
   storage: GeneratedAssetStorage;
   clock: Clock;
   turnstileVerifier: TurnstileVerifier;
+};
+
+const lazySharpOutfitRenderer: OutfitRenderer = {
+  async render(configuration) {
+    const { sharpOutfitRenderer } =
+      await import("@/server/rendering/outfit-renderer");
+    return sharpOutfitRenderer.render(configuration);
+  },
 };
 
 function shortCode(): string {
@@ -163,12 +171,14 @@ export async function publishOutfit(
   suppliedDependencies?: Dependencies,
 ) {
   const dependencies = suppliedDependencies ?? {
-    renderer: sharpOutfitRenderer,
+    renderer: lazySharpOutfitRenderer,
     storage: getGeneratedAssetStorage(),
     clock: systemClock,
     turnstileVerifier: cloudflareTurnstileVerifier,
   };
-  const configuration = normalizeConfiguration(input);
+  const configuration = normalizeConfiguration(
+    normalizeCatalogConfiguration(input),
+  );
   if (
     !isPublishReady(configuration) ||
     validateCatalogConfiguration(configuration).length
@@ -211,7 +221,10 @@ export async function publishOutfit(
     const outfit = await getPrisma().outfit.update({
       where: { id: processing.id },
       data: {
-        ...paths,
+        finalImagePath: paths.finalImagePath,
+        downloadImagePath: paths.downloadImagePath,
+        thumbnailPath: paths.thumbnailPath,
+        socialImagePath: paths.socialImagePath,
         status: "PUBLISHED",
         publishedAt,
         expiresAt: new Date(

@@ -1,8 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { motion, type Variants } from "framer-motion";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  CircleOff,
+  ImageOff,
+} from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import {
@@ -12,7 +18,7 @@ import {
 import { useHydratedReducedMotion } from "@/components/motion/use-hydrated-reduced-motion";
 import type { DressUpAsset } from "@/features/dress-up/catalog";
 import type { CharacterId, OutfitCategory } from "@/features/dress-up/model";
-import { Bow, StitchedArrow } from "@/features/home/home-doodles";
+import { StitchedArrow } from "@/features/home/home-doodles";
 
 export type StudioPanel = OutfitCategory | "background";
 
@@ -38,6 +44,36 @@ export const studioPanelLabels: Record<StudioPanel, string> = {
   background: "BACKGROUND",
 };
 
+const wardrobeItemVariants: Variants = {
+  rest: { opacity: 1, y: 0, scale: 1 },
+  hover: { opacity: 1, y: -6, scale: 1.05 },
+  selected: { opacity: 1, y: -4, scale: 1.035 },
+  selectedHover: { opacity: 1, y: -7, scale: 1.065 },
+  tap: { opacity: 1, y: -2, scale: 0.96 },
+};
+
+const wardrobeArtworkVariants: Variants = {
+  rest: { scale: 1 },
+  hover: { scale: 1.03 },
+  selected: { scale: 1 },
+  selectedHover: { scale: 1.03 },
+  tap: { scale: 0.99 },
+};
+
+const wardrobeInteractionSpring = {
+  type: "spring" as const,
+  stiffness: 350,
+  damping: 26,
+  mass: 0.6,
+};
+
+const wardrobeSelectionSpring = {
+  type: "spring" as const,
+  stiffness: 420,
+  damping: 32,
+  mass: 0.65,
+};
+
 function WardrobeArtwork({
   eager,
   item,
@@ -47,14 +83,16 @@ function WardrobeArtwork({
   item: StudioWardrobeItem;
   onArtworkError(path: string): void;
 }) {
-  const previewPath = "previewPath" in item ? item.previewPath : null;
+  const iconSrc = "iconSrc" in item ? item.iconSrc : null;
+  const iconPresentation =
+    "iconPresentation" in item ? item.iconPresentation : "standard";
   const [failedPath, setFailedPath] = useState<string | null>(null);
-  const failed = Boolean(previewPath && failedPath === previewPath);
+  const failed = Boolean(iconSrc && failedPath === iconSrc);
 
-  if (!previewPath)
+  if (!iconSrc)
     return (
       <span className="item-none" aria-hidden="true">
-        <Bow />
+        <CircleOff />
       </span>
     );
 
@@ -65,25 +103,112 @@ function WardrobeArtwork({
         style={{ background: item.swatch }}
         aria-hidden="true"
       >
-        <Bow />
+        <ImageOff />
       </span>
     );
 
   return (
-    <Image
-      className="item-thumbnail"
-      src={previewPath}
-      alt=""
-      width={220}
-      height={220}
-      sizes="(max-width: 767px) 42vw, 150px"
-      loading={eager ? "eager" : "lazy"}
-      onError={() => {
-        setFailedPath(previewPath);
-        onArtworkError(previewPath);
-      }}
-      unoptimized
-    />
+    <span
+      className={`item-thumbnail-frame item-thumbnail-frame--${iconPresentation}`}
+      aria-hidden="true"
+    >
+      <Image
+        className="item-thumbnail"
+        src={iconSrc}
+        alt=""
+        width={256}
+        height={256}
+        sizes="(max-width: 767px) 42vw, (max-width: 1199px) 18vw, 176px"
+        loading={eager ? "eager" : "lazy"}
+        onError={() => {
+          setFailedPath(iconSrc);
+          onArtworkError(iconSrc);
+        }}
+      />
+    </span>
+  );
+}
+
+function WardrobeIconItem({
+  buttonRef,
+  disabled,
+  eager,
+  item,
+  onArtworkError,
+  onKeyDown,
+  onSelect,
+  reduceMotion,
+  selected,
+  selectionLayoutId,
+  tabIndex,
+  targetName,
+}: {
+  buttonRef(node: HTMLButtonElement | null): void;
+  disabled: boolean;
+  eager: boolean;
+  item: StudioWardrobeItem;
+  onArtworkError(path: string): void;
+  onKeyDown(event: KeyboardEvent<HTMLButtonElement>): void;
+  onSelect(): void;
+  reduceMotion: boolean;
+  selected: boolean;
+  selectionLayoutId: string;
+  tabIndex: number;
+  targetName: string;
+}) {
+  const accessibleLabel =
+    item.id === "none"
+      ? selected
+        ? `No accessory selected for ${targetName}`
+        : `Remove accessory from ${targetName}`
+      : `${selected ? "Selected" : "Select"} ${item.label} for ${targetName}`;
+
+  return (
+    <motion.button
+      ref={buttonRef}
+      type="button"
+      disabled={disabled}
+      aria-pressed={selected}
+      aria-label={accessibleLabel}
+      className={
+        selected ? "wardrobe-icon-item is-selected" : "wardrobe-icon-item"
+      }
+      tabIndex={tabIndex}
+      layout={reduceMotion ? false : "position"}
+      initial={false}
+      variants={wardrobeItemVariants}
+      animate={selected ? "selected" : "rest"}
+      whileHover={
+        reduceMotion ? undefined : selected ? "selectedHover" : "hover"
+      }
+      whileTap={reduceMotion ? undefined : "tap"}
+      transition={reduceMotion ? { duration: 0 } : wardrobeInteractionSpring}
+      onClick={onSelect}
+      onKeyDown={onKeyDown}
+      data-wardrobe-item={item.id}
+      data-cursor="DRESS"
+    >
+      <span className="wardrobe-icon__hover-backplate" aria-hidden="true" />
+      {selected ? (
+        <motion.span
+          className="wardrobe-icon__selection-frame"
+          layoutId={reduceMotion ? undefined : selectionLayoutId}
+          transition={reduceMotion ? { duration: 0 } : wardrobeSelectionSpring}
+          aria-hidden="true"
+        />
+      ) : null}
+      <motion.span
+        className="wardrobe-icon__artwork"
+        variants={wardrobeArtworkVariants}
+        aria-hidden="true"
+      >
+        <WardrobeArtwork
+          eager={eager}
+          item={item}
+          onArtworkError={onArtworkError}
+        />
+      </motion.span>
+    </motion.button>
   );
 }
 
@@ -368,7 +493,7 @@ export function WardrobeDeck({
             key={`${activePanel}:${activeCharacter}:${randomizeCycle}`}
             className="item-rail"
             data-randomizing={randomizing || undefined}
-            role="radiogroup"
+            role="group"
             aria-label={`${studioPanelLabels[activePanel]} items`}
             initial={false}
             animate={{ opacity: 1, x: 0 }}
@@ -377,81 +502,34 @@ export function WardrobeDeck({
               ease: editorialEase,
             }}
           >
-            <AnimatePresence initial={false} mode="popLayout">
-              {items.map((item, index) => {
-                const selected =
-                  item.id === "none"
-                    ? selectedItemId === null
-                    : selectedItemId === item.id;
-                const noCurrentSelection = selectedItemId === null;
-                const accessibleLabel = `${selected ? "Selected: " : "Choose "}${item.label}`;
-                return (
-                  <motion.button
-                    ref={(node) => {
-                      itemRefs.current[index] = node;
-                    }}
-                    key={item.id}
-                    type="button"
-                    disabled={disabled}
-                    role="radio"
-                    aria-checked={selected}
-                    aria-label={accessibleLabel}
-                    className={selected ? "is-selected" : ""}
-                    tabIndex={
-                      selected || (noCurrentSelection && index === 0) ? 0 : -1
-                    }
-                    layout={reduceMotion ? false : "position"}
-                    initial={
-                      reduceMotion ? false : { opacity: 0, y: 7, scale: 0.97 }
-                    }
-                    animate={{
-                      opacity: 1,
-                      y: selected && !reduceMotion ? -2 : 0,
-                      scale: 1,
-                    }}
-                    whileHover={
-                      reduceMotion ? undefined : { y: -5, scale: 1.025 }
-                    }
-                    exit={
-                      reduceMotion
-                        ? undefined
-                        : { opacity: 0, y: 4, scale: 0.97 }
-                    }
-                    transition={{
-                      duration: reduceMotion ? 0 : 0.22,
-                      ease: editorialEase,
-                    }}
-                    onClick={() => selectRailItem(index)}
-                    onKeyDown={(event) => handleItemKeys(event, index)}
-                    data-cursor="DRESS"
-                  >
-                    <span className="item-rail__index">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <WardrobeArtwork
-                      eager={index < 3}
-                      item={item}
-                      onArtworkError={onArtworkError}
-                    />
-                    <strong>{item.label.toUpperCase()}</strong>
-                    {selected ? (
-                      <motion.span
-                        className="item-check"
-                        layoutId="studio-selected-item"
-                        transition={{
-                          type: "spring",
-                          stiffness: 420,
-                          damping: 30,
-                        }}
-                        aria-hidden="true"
-                      >
-                        <Check />
-                      </motion.span>
-                    ) : null}
-                  </motion.button>
-                );
-              })}
-            </AnimatePresence>
+            {items.map((item, index) => {
+              const selected =
+                item.id === "none"
+                  ? selectedItemId === null
+                  : selectedItemId === item.id;
+              const noCurrentSelection = selectedItemId === null;
+              return (
+                <WardrobeIconItem
+                  buttonRef={(node) => {
+                    itemRefs.current[index] = node;
+                  }}
+                  key={item.id}
+                  disabled={disabled}
+                  eager={index < 3}
+                  item={item}
+                  onArtworkError={onArtworkError}
+                  onKeyDown={(event) => handleItemKeys(event, index)}
+                  onSelect={() => selectRailItem(index)}
+                  reduceMotion={reduceMotion}
+                  selected={selected}
+                  selectionLayoutId={`wardrobe-selection-${activeCharacter}-${activePanel}`}
+                  tabIndex={
+                    selected || (noCurrentSelection && index === 0) ? 0 : -1
+                  }
+                  targetName={targetName}
+                />
+              );
+            })}
           </motion.div>
         </section>
       ) : null}

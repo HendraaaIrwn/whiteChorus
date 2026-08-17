@@ -170,13 +170,14 @@ test("keeps the Studio CTA blue wave spaced without moving the white wave", asyn
 });
 
 test("shows and refreshes the current daily ranking", async ({ page }) => {
-  await page.route("**/api/daily-winners", async (route) => {
+  await page.route("**/api/daily-winners*", async (route) => {
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
         ok: true,
         data: {
-          winners: [],
+          latestWinner: null,
+          completedDays: [],
           ranking: {
             dayKey: "2026-08-08",
             dayStart: "2026-08-07T17:00:00.000Z",
@@ -184,6 +185,10 @@ test("shows and refreshes the current daily ranking", async ({ page }) => {
             generatedAt: "2026-08-08T08:30:00.000Z",
             timeZone: "Asia/Jakarta",
             minimumRatings: 5,
+            page: 1,
+            pageSize: 10,
+            totalItems: 1,
+            totalPages: 1,
             items: [
               {
                 id: "live-look",
@@ -206,7 +211,7 @@ test("shows and refreshes the current daily ranking", async ({ page }) => {
 
   await page.goto("/daily-winners");
   await expect(
-    page.getByRole("heading", { name: "DAILY WINNER" }),
+    page.getByRole("heading", { name: "LATEST DAILY WINNER" }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "LIVE RANKING" }),
@@ -338,15 +343,15 @@ test("enters silently and restores a saved studio draft", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "DRESS FRISKA" }).locator("img"),
   ).toHaveAttribute("src", /friska-icon\.webp/);
-  await page.getByRole("tab", { name: "ONE-PIECE" }).click();
-  await page.getByRole("radio", { name: /one piece 02/i }).click();
+  await page.getByRole("tab", { name: "TOP" }).click();
+  await page.getByRole("button", { name: /top 02/i }).click();
   await expect(
-    page.getByRole("radio", { name: /selected: one piece 02/i }),
-  ).toHaveAttribute("aria-checked", "true");
+    page.getByRole("button", { name: /selected top 02 for emir/i }),
+  ).toHaveAttribute("aria-pressed", "true");
   await expect(
     page
-      .getByRole("radio", { name: /selected: one piece 02/i })
-      .locator(".item-check"),
+      .getByRole("button", { name: /selected top 02 for emir/i })
+      .locator(".wardrobe-icon__selection-frame"),
   ).toBeVisible();
   await expect
     .poll(() =>
@@ -354,13 +359,36 @@ test("enters silently and restores a saved studio draft", async ({ page }) => {
         window.localStorage.getItem("white-chorus:dress-up-draft:v2"),
       ),
     )
-    .toContain('"onePieceId":"a-one-piece-02"');
+    .toContain('"topId":"emir-top-02"');
 
   await page.reload();
-  await page.getByRole("tab", { name: "ONE-PIECE" }).click();
+  await page.getByRole("tab", { name: "TOP" }).click();
   await expect(
-    page.getByRole("radio", { name: /selected: one piece 02/i }),
-  ).toHaveAttribute("aria-checked", "true");
+    page.getByRole("button", { name: /selected top 02 for emir/i }),
+  ).toHaveAttribute("aria-pressed", "true");
+
+  await page.evaluate(() => {
+    const draft = JSON.parse(
+      window.localStorage.getItem("white-chorus:dress-up-draft:v2")!,
+    ) as { characterA: { topId: string } };
+    draft.characterA.topId = "a-top-02";
+    window.localStorage.setItem(
+      "white-chorus:dress-up-draft:v2",
+      JSON.stringify(draft),
+    );
+  });
+  await page.reload();
+  await page.getByRole("tab", { name: "TOP" }).click();
+  await expect(
+    page.getByRole("button", { name: /selected top 02 for emir/i }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.localStorage.getItem("white-chorus:dress-up-draft:v2"),
+      ),
+    )
+    .toContain('"topId":"emir-top-02"');
 
   await page.evaluate(() => {
     const draft = JSON.parse(
@@ -379,7 +407,7 @@ test("enters silently and restores a saved studio draft", async ({ page }) => {
         window.localStorage.getItem("white-chorus:dress-up-draft:v2"),
       ),
     )
-    .toContain('"topId":"a-top-01"');
+    .toContain('"topId":null');
 });
 
 test("uses straight, uniform geometry for the styling workspace", async ({
@@ -387,6 +415,7 @@ test("uses straight, uniform geometry for the styling workspace", async ({
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/studio");
+  await page.getByRole("tab", { name: "TOP" }).click();
 
   await expect(
     page.getByRole("region", { name: "Character stage" }),
@@ -423,9 +452,9 @@ test("uses straight, uniform geometry for the styling workspace", async ({
       },
       cards: cards.map((card) => ({
         borderRadius: getComputedStyle(card).borderRadius,
-        height: card.getBoundingClientRect().height,
+        height: (card as HTMLElement).offsetHeight,
         rotation: rotation(card),
-        width: card.getBoundingClientRect().width,
+        width: (card as HTMLElement).offsetWidth,
       })),
       switchRotations: switchers.map(rotation),
       actions: actions.map((action) => ({
@@ -446,7 +475,7 @@ test("uses straight, uniform geometry for the styling workspace", async ({
   expect(geometry.cards.length).toBeGreaterThan(1);
   expect(
     new Set(geometry.cards.map(({ borderRadius }) => borderRadius)),
-  ).toEqual(new Set(["18px"]));
+  ).toEqual(new Set(["14px"]));
   expect(
     Math.max(...geometry.cards.map(({ width }) => width)) -
       Math.min(...geometry.cards.map(({ width }) => width)),
@@ -473,15 +502,16 @@ test("uses straight, uniform geometry for the styling workspace", async ({
   ).toBe(true);
 });
 
-test("uses the compact wardrobe hierarchy and text-only category tabs", async ({
+test("uses the icon-only wardrobe hierarchy and text-only category tabs", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/studio");
-  await page.getByRole("radio", { name: /choose hair 01/i }).click();
+  await page.getByRole("tab", { name: "TOP" }).click();
+  await page.getByRole("button", { name: /top 01 for emir/i }).click();
   await expect(
-    page.getByRole("radio", { name: /selected: hair 01/i }),
-  ).toHaveAttribute("aria-checked", "true");
+    page.getByRole("button", { name: /selected top 01 for emir/i }),
+  ).toHaveAttribute("aria-pressed", "true");
 
   const surfaces = await page.evaluate(() => {
     const wardrobe = document.querySelector<HTMLElement>(".studio-wardrobe")!;
@@ -495,11 +525,14 @@ test("uses the compact wardrobe hierarchy and text-only category tabs", async ({
     const activeIndicator = activeTab.querySelector<HTMLElement>(
       ".category-tab__indicator",
     )!;
-    const selectedCard = wardrobe.querySelector<HTMLElement>(
-      '.item-rail [role="radio"][aria-checked="true"]',
+    const selectedItem = wardrobe.querySelector<HTMLElement>(
+      '.item-rail button[aria-pressed="true"]',
     )!;
-    const unselectedCard = wardrobe.querySelector<HTMLElement>(
-      '.item-rail [role="radio"][aria-checked="false"]',
+    const unselectedItem = wardrobe.querySelector<HTMLElement>(
+      '.item-rail button[aria-pressed="false"]',
+    )!;
+    const selectedFrame = selectedItem.querySelector<HTMLElement>(
+      ".wardrobe-icon__selection-frame",
     )!;
     const pageSurface = document.querySelector<HTMLElement>(".studio-page")!;
     const heading = wardrobe.querySelector<HTMLElement>(
@@ -530,10 +563,23 @@ test("uses the compact wardrobe hierarchy and text-only category tabs", async ({
       activeIndicatorBorderColor: style(activeIndicator).borderTopColor,
       activeIndicatorBorderStyle: style(activeIndicator).borderTopStyle,
       activeIndicatorBorderWidth: style(activeIndicator).borderTopWidth,
-      selectedCardBackground: style(selectedCard).backgroundColor,
-      unselectedCardBackground: style(unselectedCard).backgroundColor,
-      unselectedCardBorderStyle: style(unselectedCard).borderStyle,
-      unselectedCardBorderWidth: style(unselectedCard).borderWidth,
+      selectedItemBackground: style(selectedItem).backgroundColor,
+      selectedItemBorderWidth: style(selectedItem).borderWidth,
+      selectedFrameBackground: style(selectedFrame).backgroundColor,
+      selectedFrameBorderRadius: style(selectedFrame).borderRadius,
+      selectedFrameBorderWidth: style(selectedFrame).borderWidth,
+      selectedFrameShadow: style(selectedFrame).boxShadow,
+      unselectedItemBackground: style(unselectedItem).backgroundColor,
+      unselectedItemBorderWidth: style(unselectedItem).borderWidth,
+      legacyChromeCount: wardrobe.querySelectorAll(
+        ".item-rail__index, .item-check, .item-selection-frame, .item-rail strong",
+      ).length,
+      itemImageCount: wardrobe.querySelectorAll(
+        ".item-rail button:not([data-wardrobe-item='none']) .item-thumbnail",
+      ).length,
+      itemButtonCount: wardrobe.querySelectorAll(
+        ".item-rail button[data-wardrobe-item]",
+      ).length,
       tabCount: tabs.querySelectorAll('[role="tab"]').length,
       hierarchy: [heading, backgroundCarousel, tabs, itemPanel].map(
         (element) => element.getBoundingClientRect().top,
@@ -556,12 +602,16 @@ test("uses the compact wardrobe hierarchy and text-only category tabs", async ({
   expect(surfaces.activeIndicatorBorderStyle).toBe("dashed");
   expect(surfaces.activeIndicatorBorderWidth).toBe("3px");
   expect(surfaces.activeIndicatorBorderColor).not.toBe("rgba(0, 0, 0, 0)");
-  expect(surfaces.unselectedCardBackground).not.toBe(surfaces.panelBackground);
-  expect(surfaces.selectedCardBackground).not.toBe(
-    surfaces.unselectedCardBackground,
-  );
-  expect(surfaces.unselectedCardBorderStyle).toBe("solid");
-  expect(surfaces.unselectedCardBorderWidth).toBe("1px");
+  expect(surfaces.selectedItemBackground).toBe("rgba(0, 0, 0, 0)");
+  expect(surfaces.unselectedItemBackground).toBe("rgba(0, 0, 0, 0)");
+  expect(surfaces.selectedItemBorderWidth).toBe("0px");
+  expect(surfaces.unselectedItemBorderWidth).toBe("0px");
+  expect(surfaces.selectedFrameBackground).not.toBe("rgba(0, 0, 0, 0)");
+  expect(surfaces.selectedFrameBorderRadius).toBe("16px");
+  expect(surfaces.selectedFrameBorderWidth).toBe("3px");
+  expect(surfaces.selectedFrameShadow).not.toBe("none");
+  expect(surfaces.legacyChromeCount).toBe(0);
+  expect(surfaces.itemImageCount).toBe(surfaces.itemButtonCount);
   expect(surfaces.tabCount).toBe(6);
   expect(surfaces.hierarchy).toEqual(
     [...surfaces.hierarchy].sort((a, b) => a - b),
@@ -590,17 +640,13 @@ test("gives inactive category tabs restrained palette hover feedback", async ({
   const activeColor = await activeTab.evaluate(
     (element) => getComputedStyle(element).color,
   );
-  const inactiveColor = await inactiveTab.evaluate(
-    (element) => getComputedStyle(element).color,
-  );
-
   await inactiveTab.hover();
 
   await expect
     .poll(() =>
       inactiveTab.evaluate((element) => getComputedStyle(element).color),
     )
-    .not.toBe(inactiveColor);
+    .toBe("rgb(176, 228, 233)");
   await expect
     .poll(() =>
       inactiveTab.evaluate(
@@ -705,7 +751,7 @@ test("gives background cards polished hover and press feedback", async ({
   await expect(card).toHaveAttribute("aria-checked", "true");
 });
 
-test("gives wardrobe cards a restrained fine-pointer hover", async ({
+test("keeps selected wardrobe icons above the exact hover and press treatment", async ({
   page,
 }, testInfo) => {
   test.skip(
@@ -715,30 +761,105 @@ test("gives wardrobe cards a restrained fine-pointer hover", async ({
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/studio");
 
-  const card = page.getByRole("radio", { name: /choose hair 01/i });
-  const before = await card.evaluate((element) => ({
-    border: getComputedStyle(element).borderColor,
-    transform: getComputedStyle(element).transform,
-  }));
-  await card.hover();
+  await page.getByRole("tab", { name: "TOP" }).click();
+  await page.getByRole("button", { name: /top 01 for emir/i }).click();
+  const selectedItem = page.getByRole("button", {
+    name: /selected top 01 for emir/i,
+  });
+  const item = page
+    .locator("#studio-item-panel button[data-wardrobe-item]")
+    .nth(1);
+  await expect(selectedItem).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(selectedItem).toHaveCSS("border-width", "0px");
+  await expect(
+    selectedItem.locator(".wardrobe-icon__selection-frame"),
+  ).toHaveCSS("border-radius", "16px");
+  await item.hover();
   await expect
-    .poll(() => card.evaluate((element) => getComputedStyle(element).transform))
-    .not.toBe(before.transform);
-  const hovered = await card.evaluate((element) => ({
-    border: getComputedStyle(element).borderColor,
+    .poll(() =>
+      item.evaluate(
+        (element) =>
+          new DOMMatrixReadOnly(getComputedStyle(element).transform).a,
+      ),
+    )
+    .toBeCloseTo(1.05, 2);
+  await expect
+    .poll(() =>
+      item.evaluate(
+        (element) =>
+          new DOMMatrixReadOnly(getComputedStyle(element).transform).m42,
+      ),
+    )
+    .toBeCloseTo(-6, 0);
+  const hovered = await item.evaluate((element) => ({
+    background: getComputedStyle(element).backgroundColor,
+    borderWidth: getComputedStyle(element).borderWidth,
     bounds: element.getBoundingClientRect().toJSON(),
     matrix: new DOMMatrixReadOnly(getComputedStyle(element).transform),
     railBounds: element.parentElement!.getBoundingClientRect().toJSON(),
     zIndex: getComputedStyle(element).zIndex,
   }));
-  expect(hovered.border).not.toBe(before.border);
-  expect(hovered.matrix.a).toBeGreaterThan(1);
-  expect(hovered.matrix.m42).toBeLessThan(0);
+  const selectedWhileOtherHovered = await selectedItem.evaluate((element) => {
+    const frame = element.querySelector<HTMLElement>(
+      ".wardrobe-icon__selection-frame",
+    )!;
+    return {
+      background: getComputedStyle(element).backgroundColor,
+      frameShadow: getComputedStyle(frame).boxShadow,
+      zIndex: getComputedStyle(element).zIndex,
+    };
+  });
+  expect(hovered.background).toBe("rgba(0, 0, 0, 0)");
+  expect(hovered.borderWidth).toBe("0px");
+  expect(hovered.matrix.a).toBeCloseTo(1.05, 2);
+  expect(hovered.matrix.m42).toBeCloseTo(-6, 0);
+  expect(
+    await item
+      .locator(".wardrobe-icon__artwork")
+      .evaluate(
+        (element) =>
+          new DOMMatrixReadOnly(getComputedStyle(element).transform).a,
+      ),
+  ).toBeCloseTo(1.03, 2);
+  await expect(item.locator(".wardrobe-icon__hover-backplate")).toHaveCSS(
+    "opacity",
+    "1",
+  );
   expect(hovered.bounds.top).toBeGreaterThanOrEqual(hovered.railBounds.top);
   expect(hovered.bounds.right).toBeLessThanOrEqual(hovered.railBounds.right);
   expect(hovered.bounds.bottom).toBeLessThanOrEqual(hovered.railBounds.bottom);
   expect(hovered.bounds.left).toBeGreaterThanOrEqual(hovered.railBounds.left);
-  expect(Number(hovered.zIndex)).toBeGreaterThanOrEqual(2);
+  expect(Number(hovered.zIndex)).toBe(2);
+  expect(Number(selectedWhileOtherHovered.zIndex)).toBeGreaterThan(
+    Number(hovered.zIndex),
+  );
+  expect(selectedWhileOtherHovered.frameShadow).not.toBe("none");
+
+  const bounds = await item.boundingBox();
+  expect(bounds).not.toBeNull();
+  await page.mouse.move(
+    bounds!.x + bounds!.width / 2,
+    bounds!.y + bounds!.height / 2,
+  );
+  await page.mouse.down();
+  await expect
+    .poll(() =>
+      item.evaluate(
+        (element) =>
+          new DOMMatrixReadOnly(getComputedStyle(element).transform).a,
+      ),
+    )
+    .toBeCloseTo(0.96, 2);
+  await page.mouse.up();
+  await expect(item).toHaveAttribute("aria-pressed", "true");
+  await expect(item.locator(".wardrobe-icon__selection-frame")).toBeVisible();
+  await expect(item).toHaveCSS(
+    "background-color",
+    selectedWhileOtherHovered.background,
+  );
+  expect(
+    Number(await item.evaluate((element) => getComputedStyle(element).zIndex)),
+  ).toBeGreaterThan(Number(hovered.zIndex));
 });
 
 test("matches the homepage hero CTA label motion", async ({
@@ -814,7 +935,7 @@ test("keeps both characters visible while dressing only the active voice", async
   await friska.click();
   await expect(friska).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("tab", { name: "TOP" }).click();
-  await page.getByRole("radio", { name: /top 02/i }).click();
+  await page.getByRole("button", { name: /top 02 for friska/i }).click();
 
   await expect
     .poll(() =>
@@ -828,7 +949,7 @@ test("keeps both characters visible while dressing only the active voice", async
         return [draft.characterA.topId, draft.characterB.topId];
       }),
     )
-    .toEqual(["a-top-01", "b-top-02"]);
+    .toEqual(["emir-top-01", "friska-top-02"]);
 });
 
 test("supports keyboard navigation for backgrounds and category tabs", async ({
@@ -871,21 +992,410 @@ test("supports keyboard navigation for backgrounds and category tabs", async ({
     .toBe(true);
 });
 
+test("supports roving keyboard selection and scrolls wardrobe icons into view", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/studio");
+  await page.getByRole("tab", { name: "TOP" }).click();
+
+  const rail = page
+    .locator("#main-content .item-rail")
+    .filter({ visible: true });
+  const first = page.getByRole("button", { name: /selected top 01 for emir/i });
+  await first.focus();
+  await page.keyboard.press("End");
+
+  const last = page.getByRole("button", {
+    name: /selected top 03 for emir/i,
+  });
+  await expect(last).toBeFocused();
+  await expect(last).toHaveAttribute("tabindex", "0");
+  await expect
+    .poll(() => rail.evaluate((element) => element.scrollLeft))
+    .toBeGreaterThan(0);
+  await expect
+    .poll(() =>
+      last.evaluate((element) => {
+        const card = element.getBoundingClientRect();
+        const railBounds = element.parentElement!.getBoundingClientRect();
+        return (
+          card.left >= railBounds.left - 1 && card.right <= railBounds.right + 1
+        );
+      }),
+    )
+    .toBe(true);
+  const focusStyle = await last.evaluate((element) => ({
+    outlineColor: getComputedStyle(element).outlineColor,
+    outlineOffset: getComputedStyle(element).outlineOffset,
+    outlineWidth: getComputedStyle(element).outlineWidth,
+  }));
+  expect(focusStyle.outlineWidth).toBe("3px");
+  expect(focusStyle.outlineOffset).toBe("4px");
+  expect(focusStyle.outlineColor).not.toBe("rgba(0, 0, 0, 0)");
+
+  await page.keyboard.press("Home");
+  await expect(
+    page.getByRole("button", { name: /selected top 01 for emir/i }),
+  ).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(
+    page.getByRole("button", { name: /selected top 02 for emir/i }),
+  ).toBeFocused();
+  await expect(
+    page.getByRole("button", { name: /select top 03 for emir/i }),
+  ).toHaveAttribute("tabindex", "-1");
+});
+
+test("renders only real wardrobe icons in cohesive single rows and leaves unavailable categories empty", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "The real wardrobe geometry matrix runs once in Chromium.",
+  );
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/studio");
+
+  const characters = [
+    {
+      button: "DRESS EMIR",
+      icon: "/dress-up/character-a/icons/icon-emir-top-01.png",
+      layer: "/dress-up/character-a/tops/a-top-01.webp",
+    },
+    {
+      button: "DRESS FRISKA",
+      icon: "/dress-up/character-b/icons/icon-friska-top-01.png",
+      layer: "/dress-up/character-b/tops/b-top-01.webp",
+    },
+  ] as const;
+  const categories = [
+    ["HAIR", false],
+    ["TOP", true],
+    ["BOTTOM", true],
+    ["ONE-PIECE", false],
+    ["SHOES", true],
+    ["ACCESSORIES", false],
+  ] as const;
+
+  for (const character of characters) {
+    await page.getByRole("button", { name: character.button }).click();
+    for (const [tabName, hasRealItems] of categories) {
+      await page.getByRole("tab", { name: tabName }).click();
+      await expect(
+        page.getByRole("heading", { level: 2, name: tabName }),
+      ).toBeVisible();
+      const rail = page
+        .locator("#main-content .item-rail")
+        .filter({ visible: true });
+      const geometry = await rail.evaluate((element) => {
+        const items = [
+          ...element.querySelectorAll<HTMLElement>(
+            "button[data-wardrobe-item]",
+          ),
+        ];
+        return {
+          itemCount: items.length,
+          imageCount: element.querySelectorAll(".item-thumbnail").length,
+          placeholderCount: element.querySelectorAll(
+            ".item-none, .item-thumbnail-fallback",
+          ).length,
+          usesThumbnailPath: [
+            ...element.querySelectorAll<HTMLImageElement>(".item-thumbnail"),
+          ].some((image) => image.src.includes("/thumbnails/")),
+          sizes: items.map(({ offsetHeight, offsetWidth }) => ({
+            height: offsetHeight,
+            width: offsetWidth,
+          })),
+          tops: items.map(({ offsetTop }) => offsetTop),
+          gap: Number.parseFloat(getComputedStyle(element).columnGap),
+          clientWidth: element.clientWidth,
+          display: getComputedStyle(element).display,
+          flexWrap: getComputedStyle(element).flexWrap,
+          overflowX: getComputedStyle(element).overflowX,
+          scrollWidth: element.scrollWidth,
+        };
+      });
+
+      expect(geometry.display).toBe("flex");
+      expect(geometry.flexWrap).toBe("nowrap");
+      expect(geometry.overflowX).toBe("auto");
+      expect(geometry.itemCount).toBe(hasRealItems ? 3 : 0);
+      expect(geometry.imageCount).toBe(hasRealItems ? 3 : 0);
+      expect(geometry.placeholderCount).toBe(0);
+      expect(geometry.usesThumbnailPath).toBe(false);
+
+      if (hasRealItems) {
+        expect(geometry.scrollWidth).toBeGreaterThanOrEqual(
+          geometry.clientWidth,
+        );
+        expect(
+          Math.max(...geometry.tops) - Math.min(...geometry.tops),
+        ).toBeLessThanOrEqual(1);
+        expect(
+          geometry.sizes.every(
+            ({ height, width }) =>
+              Math.abs(width - height) <= 1 && width >= 132 && width <= 176,
+          ),
+        ).toBe(true);
+        expect(geometry.gap).toBeGreaterThanOrEqual(10);
+        expect(geometry.gap).toBeLessThanOrEqual(17);
+        await expect(
+          rail.locator("button[data-wardrobe-item]").first(),
+        ).toHaveAttribute("aria-pressed", /true|false/);
+      }
+
+      await expect(rail.locator('[role="radio"]')).toHaveCount(0);
+      await expect(
+        rail.locator(
+          ".item-rail__index, .item-check, .item-selection-frame, strong",
+        ),
+      ).toHaveCount(0);
+    }
+
+    await page.getByRole("tab", { name: "TOP" }).click();
+    const topCardImage = page
+      .getByRole("button", { name: /top 01/i })
+      .locator(".item-thumbnail");
+    await expect(topCardImage).toHaveAttribute(
+      "src",
+      new RegExp(encodeURIComponent(character.icon)),
+    );
+    await expect(topCardImage).toHaveCSS("object-fit", "contain");
+    await expect
+      .poll(() =>
+        topCardImage.evaluate((image) => {
+          const element = image as HTMLImageElement;
+          return (
+            element.complete &&
+            element.naturalWidth > 0 &&
+            element.naturalWidth === element.naturalHeight
+          );
+        }),
+      )
+      .toBe(true);
+    await expect(
+      page.locator(`.studio-production-layer[src='${character.layer}']`),
+    ).toBeVisible();
+    await expect(
+      page.locator(".studio-production-layer[src*='/icons/']"),
+    ).toHaveCount(0);
+  }
+});
+
+test("keeps all supplied top, bottom, and shoes icons synchronized with their character layers", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "The complete 18-item wardrobe mapping matrix runs once in Chromium.",
+  );
+  await page.goto("/studio");
+
+  const characters = [
+    {
+      button: "DRESS EMIR",
+      characterName: "emir",
+      group: ".studio-character-group--emir",
+      otherGroup: ".studio-character-group--friska",
+      assetPrefix: "a",
+      characterPath: "character-a",
+      configurationKey: "characterA",
+    },
+    {
+      button: "DRESS FRISKA",
+      characterName: "friska",
+      group: ".studio-character-group--friska",
+      otherGroup: ".studio-character-group--emir",
+      assetPrefix: "b",
+      characterPath: "character-b",
+      configurationKey: "characterB",
+    },
+  ] as const;
+  const categories = [
+    { tab: "TOP", category: "top", folder: "tops", field: "topId" },
+    {
+      tab: "BOTTOM",
+      category: "bottom",
+      folder: "bottoms",
+      field: "bottomId",
+    },
+    {
+      tab: "SHOES",
+      category: "shoes",
+      folder: "shoes",
+      field: "shoesId",
+    },
+  ] as const;
+
+  for (const character of characters) {
+    await page.getByRole("button", { name: character.button }).click();
+    for (const category of categories) {
+      await page.getByRole("tab", { name: category.tab }).click();
+      for (const ordinal of [1, 2, 3]) {
+        const number = String(ordinal).padStart(2, "0");
+        const itemId = `${character.characterName}-${category.category}-${number}`;
+        const iconSrc = `/dress-up/${character.characterPath}/icons/icon-${character.characterName}-${category.category}-${number}.png`;
+        const layerSrc = `/dress-up/${character.characterPath}/${category.folder}/${character.assetPrefix}-${category.category}-${number}.webp`;
+        const item = page.locator(`[data-wardrobe-item="${itemId}"]`);
+
+        await expect(item.locator(".item-thumbnail")).toHaveAttribute(
+          "src",
+          new RegExp(encodeURIComponent(iconSrc)),
+        );
+        await item.click();
+        await expect(item).toHaveAttribute("aria-pressed", "true");
+        await expect(
+          page.locator(`${character.group} img[src='${layerSrc}']`),
+        ).toBeVisible();
+        await expect(
+          page.locator(`${character.otherGroup} img[src='${layerSrc}']`),
+        ).toHaveCount(0);
+        await expect(
+          page.locator(".studio-production-layer[src*='/icons/']"),
+        ).toHaveCount(0);
+        await expect
+          .poll(() =>
+            page.evaluate(
+              ({ configurationKey, field, itemId }) => {
+                const draft = JSON.parse(
+                  window.localStorage.getItem(
+                    "white-chorus:dress-up-draft:v2",
+                  )!,
+                ) as Record<string, Record<string, string | null>>;
+                return draft[configurationKey]?.[field] === itemId;
+              },
+              {
+                configurationKey: character.configurationKey,
+                field: category.field,
+                itemId,
+              },
+            ),
+          )
+          .toBe(true);
+      }
+    }
+  }
+});
+
+test("moves Friska through one registered character root with every garment layer aligned", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "Character registration geometry runs once in Chromium.",
+  );
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/studio");
+  await page.getByRole("button", { name: "DRESS FRISKA" }).click();
+
+  const combinations = [
+    { top: 1, bottom: 3, shoes: 2 },
+    { top: 2, bottom: 1, shoes: 3 },
+    { top: 3, bottom: 2, shoes: 1 },
+  ] as const;
+
+  for (const combination of combinations) {
+    for (const [tab, category, ordinal] of [
+      ["TOP", "top", combination.top],
+      ["BOTTOM", "bottom", combination.bottom],
+      ["SHOES", "shoes", combination.shoes],
+    ] as const) {
+      await page.getByRole("tab", { name: tab }).click();
+      await page
+        .getByRole("button", {
+          name: new RegExp(`${category} 0${ordinal} for friska`, "i"),
+        })
+        .click();
+    }
+
+    const assetIds = [
+      "character-b-base",
+      `friska-top-0${combination.top}`,
+      `friska-bottom-0${combination.bottom}`,
+      `friska-shoes-0${combination.shoes}`,
+    ];
+    const layers = page.locator(
+      assetIds
+        .map(
+          (assetId) =>
+            `.studio-character-group--friska [data-asset-id="${assetId}"]`,
+        )
+        .join(", "),
+    );
+    await expect(layers).toHaveCount(4);
+    const layerGeometry = await layers.evaluateAll((elements) =>
+      elements.map((element) => {
+        const bounds = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          height: bounds.height,
+          left: bounds.left,
+          styleLeft: style.left,
+          styleTop: style.top,
+          top: bounds.top,
+          width: bounds.width,
+        };
+      }),
+    );
+    const base = layerGeometry[0]!;
+    expect(
+      layerGeometry.every(
+        (layer) =>
+          Math.abs(layer.left - base.left) <= 0.1 &&
+          Math.abs(layer.top - base.top) <= 0.1 &&
+          Math.abs(layer.width - base.width) <= 0.1 &&
+          Math.abs(layer.height - base.height) <= 0.1 &&
+          layer.styleLeft === "0px" &&
+          layer.styleTop === "0px",
+      ),
+    ).toBe(true);
+  }
+
+  const registration = await page.evaluate(() => {
+    const emir = document.querySelector<HTMLElement>(
+      ".studio-character-group--emir",
+    )!;
+    const friska = document.querySelector<HTMLElement>(
+      ".studio-character-group--friska",
+    )!;
+    const stage = document.querySelector<HTMLElement>(".studio-stage__art")!;
+    return {
+      emirX: Number(emir.dataset.stageX),
+      emirY: Number(emir.dataset.stageY),
+      friskaX: Number(friska.dataset.stageX),
+      friskaY: Number(friska.dataset.stageY),
+      emirLeft: Number.parseFloat(getComputedStyle(emir).left),
+      friskaLeft: Number.parseFloat(getComputedStyle(friska).left),
+      stageWidth: stage.getBoundingClientRect().width,
+    };
+  });
+  expect(registration.emirX).toBe(0);
+  expect(registration.emirY).toBe(0);
+  expect(registration.friskaX).toBe(48);
+  expect(registration.friskaY).toBe(30);
+  expect(registration.friskaLeft - registration.emirLeft).toBeCloseTo(
+    registration.stageWidth * (48 / 1200),
+    0,
+  );
+});
+
 test("randomizes and resets the full studio configuration", async ({
   page,
 }) => {
   await page.goto("/studio");
-  await page.getByRole("radio", { name: /hair 02/i }).click();
+  await page.getByRole("tab", { name: "TOP" }).click();
+  await page.getByRole("button", { name: /top 02 for emir/i }).click();
   await expect(
-    page.getByRole("radio", { name: /selected: hair 02/i }),
-  ).toHaveAttribute("aria-checked", "true");
+    page.getByRole("button", { name: /selected top 02 for emir/i }),
+  ).toHaveAttribute("aria-pressed", "true");
 
   await page.getByRole("button", { name: "RESET ALL" }).click();
   await expect(page.getByText("The studio has been reset.")).toBeVisible();
   await expect(page.locator(".studio-production-layer")).toHaveCount(3);
   await expect(
-    page.getByRole("radio", { name: /choose hair 01/i }),
-  ).toHaveAttribute("aria-checked", "false");
+    page.getByRole("button", { name: /select top 01 for emir/i }),
+  ).toHaveAttribute("aria-pressed", "false");
   await expect(
     page.getByRole("button", { name: "PUBLISH TO HALL OF FAME" }),
   ).toBeDisabled();
@@ -938,6 +1448,77 @@ test("randomizes and resets the full studio configuration", async ({
   await expect(
     page.getByRole("button", { name: "PUBLISH TO HALL OF FAME" }),
   ).toBeEnabled();
+
+  const randomized = await page.evaluate(
+    () =>
+      JSON.parse(
+        window.localStorage.getItem("white-chorus:dress-up-draft:v2")!,
+      ) as {
+        characterA: {
+          hairId: string | null;
+          topId: string | null;
+          bottomId: string | null;
+          onePieceId: string | null;
+          shoesId: string | null;
+          accessoryIds: string[];
+        };
+        characterB: {
+          hairId: string | null;
+          topId: string | null;
+          bottomId: string | null;
+          onePieceId: string | null;
+          shoesId: string | null;
+          accessoryIds: string[];
+        };
+      },
+  );
+  const randomizedCharacters = [
+    {
+      button: "DRESS EMIR",
+      group: ".studio-character-group--emir",
+      configuration: randomized.characterA,
+    },
+    {
+      button: "DRESS FRISKA",
+      group: ".studio-character-group--friska",
+      configuration: randomized.characterB,
+    },
+  ] as const;
+
+  for (const character of randomizedCharacters) {
+    expect(character.configuration.hairId).toBeNull();
+    expect(character.configuration.onePieceId).toBeNull();
+    expect(character.configuration.accessoryIds).toEqual([]);
+    expect(character.configuration.topId).toMatch(/^(emir|friska)-top-0[1-3]$/);
+    expect(character.configuration.bottomId).toMatch(
+      /^(emir|friska)-bottom-0[1-3]$/,
+    );
+    expect(character.configuration.shoesId).toMatch(
+      /^(emir|friska)-shoes-0[1-3]$/,
+    );
+  }
+
+  for (const character of randomizedCharacters) {
+    await page.getByRole("button", { name: character.button }).click();
+    const selections = [
+      ["HAIR", character.configuration.hairId],
+      ["TOP", character.configuration.topId],
+      ["BOTTOM", character.configuration.bottomId],
+      ["ONE-PIECE", character.configuration.onePieceId],
+      ["SHOES", character.configuration.shoesId],
+      ["ACCESSORIES", character.configuration.accessoryIds[0] ?? null],
+    ] as const;
+    for (const [tab, itemId] of selections) {
+      if (!itemId) continue;
+      await page.getByRole("tab", { name: tab }).click();
+      await expect(
+        page.locator(`[data-wardrobe-item="${itemId}"]`),
+      ).toHaveAttribute("aria-pressed", "true");
+      await expect(
+        page.locator(`${character.group} [data-asset-id="${itemId}"]`),
+      ).toBeVisible();
+    }
+  }
 });
 
 test("shows branded fallbacks when local studio artwork fails", async ({
@@ -948,7 +1529,7 @@ test("shows branded fallbacks when local studio artwork fails", async ({
     "Network-level artwork fallbacks are covered once in desktop Chromium.",
   );
   await page.route(
-    /\/dress-up\/(backgrounds\/background-01\.webp|character-a\/thumbnails\/a-hair-01\.webp)$/,
+    "**/dress-up/backgrounds/background-01.webp",
     async (route) =>
       route.fulfill({
         status: 404,
@@ -956,8 +1537,21 @@ test("shows branded fallbacks when local studio artwork fails", async ({
         body: "",
       }),
   );
+  await page.route("**/_next/image?*", async (route) => {
+    const source = new URL(route.request().url()).searchParams.get("url");
+    if (source !== "/dress-up/character-a/icons/icon-emir-top-01.png") {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 404,
+      contentType: "image/webp",
+      body: "",
+    });
+  });
 
   await page.goto("/studio");
+  await page.getByRole("tab", { name: "TOP" }).click();
 
   await expect(page.locator(".studio-stage__asset-fallback")).toContainText(
     "ARTWORK UNAVAILABLE",
@@ -999,6 +1593,7 @@ test("shows processing feedback and an accessible publish success dialog", async
   });
 
   await page.goto("/studio");
+  await page.getByRole("tab", { name: "TOP" }).click();
   await page.getByRole("button", { name: "PUBLISH TO HALL OF FAME" }).click();
 
   await expect(page.getByText("LOOK IS LIVE", { exact: true })).toBeVisible();
@@ -1033,6 +1628,7 @@ test("freezes editing controls while the published look is rendering", async ({
   });
 
   await page.goto("/studio");
+  await page.getByRole("tab", { name: "TOP" }).click();
   await page.getByRole("button", { name: "PUBLISH TO HALL OF FAME" }).click();
 
   await expect(
@@ -1040,7 +1636,9 @@ test("freezes editing controls while the published look is rendering", async ({
   ).toHaveAttribute("aria-busy", "true");
   await expect(page.getByRole("button", { name: "DRESS EMIR" })).toBeDisabled();
   await expect(page.getByRole("tab", { name: "TOP" })).toBeDisabled();
-  await expect(page.getByRole("radio", { name: /hair 01/i })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: /top 01 for emir/i }),
+  ).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "RANDOMIZE ALL" }),
   ).toBeDisabled();
@@ -1070,7 +1668,7 @@ test("uses the Studio contextual cursor only on a ready fine pointer", async ({
   await expect(cursor).toHaveAttribute("data-label", "SELECT");
   await topTab.click();
 
-  await page.getByRole("radio", { name: /top 01/i }).hover();
+  await page.getByRole("button", { name: /top 01 for emir/i }).hover();
   await expect(cursor).toHaveAttribute("data-label", "DRESS");
 
   await page.getByRole("button", { name: "PUBLISH TO HALL OF FAME" }).hover();
@@ -1104,6 +1702,35 @@ test("preserves the draft and skips celebration when publish fails", async ({
   ).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.locator(".publish-success-burst")).toHaveCount(0);
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.localStorage.getItem("white-chorus:dress-up-draft:v2"),
+      ),
+    )
+    .not.toBeNull();
+});
+
+test("handles a non-JSON publish failure without exposing a parser error", async ({
+  page,
+}) => {
+  await mockGuestSession(page);
+  await page.route("**/api/outfits", async (route) => {
+    await route.fulfill({
+      status: 500,
+      contentType: "text/html",
+      body: "<html><body>Internal Server Error</body></html>",
+    });
+  });
+
+  await page.goto("/studio");
+  await page.getByRole("button", { name: "PUBLISH TO HALL OF FAME" }).click();
+  await expect(
+    page.getByText(
+      "We could not publish your look right now. Your draft is still saved. Please try again.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByText(/JSON\.parse/)).toHaveCount(0);
   await expect
     .poll(() =>
       page.evaluate(() =>
@@ -1156,15 +1783,31 @@ test("keeps repeated studio interactions usable with reduced motion", async ({
   await friska.click();
   await expect(friska).toHaveAttribute("aria-pressed", "true");
 
-  await page.getByRole("tab", { name: "ACCESSORIES" }).click();
-  await page.getByRole("radio", { name: /accessory 03/i }).click();
+  await page.getByRole("tab", { name: "TOP" }).click();
+  await page.getByRole("button", { name: /top 03 for friska/i }).click();
   await expect(
-    page.getByRole("radio", { name: /selected: accessory 03/i }),
-  ).toHaveAttribute("aria-checked", "true");
+    page.getByRole("button", { name: /selected top 03 for friska/i }),
+  ).toHaveAttribute("aria-pressed", "true");
 
   await page.getByRole("tab", { name: "HAIR" }).click();
-  await page.getByRole("tab", { name: "ACCESSORIES" }).click();
   await expect(
-    page.getByRole("radio", { name: /selected: accessory 03/i }),
-  ).toHaveAttribute("aria-checked", "true");
+    page.locator("#studio-item-panel button[data-wardrobe-item]"),
+  ).toHaveCount(0);
+  await page.getByRole("tab", { name: "TOP" }).click();
+  await expect(
+    page.getByRole("button", { name: /selected top 03 for friska/i }),
+  ).toHaveAttribute("aria-pressed", "true");
+
+  const selected = page.getByRole("button", {
+    name: /selected top 03 for friska/i,
+  });
+  await selected.hover();
+  await expect(selected).toHaveCSS("transform", "none");
+  await expect(selected).toHaveCSS("outline-style", "none");
+  await expect(
+    selected.locator(".wardrobe-icon__selection-frame"),
+  ).toBeVisible();
+  await expect(
+    page.locator("#main-content .item-rail").filter({ visible: true }),
+  ).toHaveCSS("scroll-behavior", "auto");
 });

@@ -30,6 +30,7 @@ test("keeps the Studio usable at every acceptance width", async ({
 
   await page.setViewportSize(viewports[0]);
   await page.goto("/studio");
+  await page.getByRole("tab", { name: "TOP" }).click();
 
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
@@ -155,14 +156,14 @@ test("keeps the Studio usable at every acceptance width", async ({
       .getByRole("radio")
       .evaluateAll((elements) =>
         elements.map((element) => {
-          const bounds = element.getBoundingClientRect();
+          const item = element as HTMLElement;
           return {
-            bottom: bounds.bottom,
-            height: bounds.height,
-            left: bounds.left,
-            right: bounds.right,
-            top: bounds.top,
-            width: bounds.width,
+            bottom: item.offsetTop + item.offsetHeight,
+            height: item.offsetHeight,
+            left: item.offsetLeft,
+            right: item.offsetLeft + item.offsetWidth,
+            top: item.offsetTop,
+            width: item.offsetWidth,
           };
         }),
       );
@@ -189,46 +190,74 @@ test("keeps the Studio usable at every acceptance width", async ({
     ).toBe(true);
 
     const outfitGeometry = await page
-      .locator("#main-content .item-rail [role='radio']")
+      .locator("#main-content .item-rail")
       .filter({ visible: true })
-      .first()
-      .evaluate((element) => {
-        const bounds = element.getBoundingClientRect();
-        const panelBounds = element
+      .evaluate((rail) => {
+        const railBounds = rail.getBoundingClientRect();
+        const panelBounds = rail
           .closest(".item-panel")!
           .getBoundingClientRect();
+        const itemElements = [
+          ...rail.querySelectorAll<HTMLElement>("button[data-wardrobe-item]"),
+        ];
+        const items = itemElements.map((element) =>
+          element.getBoundingClientRect(),
+        );
         return {
-          height: bounds.height,
-          panelBottomGap: panelBounds.bottom - bounds.bottom,
+          gap: Number.parseFloat(getComputedStyle(rail).columnGap),
+          itemHeight: itemElements[0]!.offsetHeight,
+          itemTops: itemElements.map(({ offsetTop }) => offsetTop),
+          itemWidth: itemElements[0]!.offsetWidth,
+          clientWidth: rail.clientWidth,
+          display: getComputedStyle(rail).display,
+          flexWrap: getComputedStyle(rail).flexWrap,
+          overflowX: getComputedStyle(rail).overflowX,
           panelHeight: panelBounds.height,
-          width: bounds.width,
+          railBottomGap:
+            railBounds.bottom - Math.max(...items.map(({ bottom }) => bottom)),
+          railHeight: railBounds.height,
+          railBottom: railBounds.bottom,
+          railTopGap: Math.min(...items.map(({ top }) => top)) - railBounds.top,
+          railTop: railBounds.top,
+          scrollWidth: rail.scrollWidth,
         };
       });
     expect(
       Math.min(...backgroundWidths),
       `${viewport.width}px background choices must remain visually dominant`,
     ).toBeGreaterThanOrEqual(viewport.width < 768 ? 127 : 139);
+    expect(outfitGeometry.display).toBe("flex");
+    expect(outfitGeometry.flexWrap).toBe("nowrap");
+    expect(outfitGeometry.overflowX).toBe("auto");
+    expect(outfitGeometry.scrollWidth).toBeGreaterThanOrEqual(
+      outfitGeometry.clientWidth,
+    );
     expect(
-      Math.min(...backgroundWidths),
-      `${viewport.width}px backgrounds must be wider than compact outfit cards`,
-    ).toBeGreaterThan(outfitGeometry.width * 1.25);
+      Math.max(...outfitGeometry.itemTops) -
+        Math.min(...outfitGeometry.itemTops),
+      `${viewport.width}px outfit icons must remain in one row`,
+    ).toBeLessThanOrEqual(1);
     expect(
-      outfitGeometry.width,
-      `${viewport.width}px outfit cards must keep the compact treatment`,
-    ).toBeLessThanOrEqual(112);
+      Math.abs(outfitGeometry.itemWidth - outfitGeometry.itemHeight),
+      `${viewport.width}px outfit icon hit areas must remain square`,
+    ).toBeLessThanOrEqual(1);
     expect(
-      outfitGeometry.height,
-      `${viewport.width}px outfit cards must remain comfortably tappable`,
-    ).toBeGreaterThanOrEqual(112);
+      outfitGeometry.itemWidth,
+      `${viewport.width}px outfit icons must retain substantial responsive sizing`,
+    ).toBeGreaterThanOrEqual(120);
+    expect(outfitGeometry.itemWidth).toBeLessThanOrEqual(176);
+    expect(
+      outfitGeometry.gap >= (viewport.width < 768 ? 8 : 10) &&
+        outfitGeometry.gap <= (viewport.width < 768 ? 13 : 17),
+      `${viewport.width}px outfit icon gaps must stay compact and consistent`,
+    ).toBe(true);
+    expect(outfitGeometry.railTopGap).toBeGreaterThanOrEqual(12);
+    expect(outfitGeometry.railBottomGap).toBeGreaterThanOrEqual(11);
     if (viewport.width >= 1200) {
       expect(
-        outfitGeometry.height / outfitGeometry.panelHeight,
-        `${viewport.width}px outfit cards must fill their available wardrobe row`,
-      ).toBeGreaterThan(0.9);
-      expect(
-        outfitGeometry.panelBottomGap,
-        `${viewport.width}px outfit cards must leave minimal lower dead space`,
-      ).toBeLessThanOrEqual(6);
+        outfitGeometry.railHeight / outfitGeometry.panelHeight,
+        `${viewport.width}px outfit rail must use the complete lower wardrobe row`,
+      ).toBeGreaterThanOrEqual(0.99);
     }
 
     if (viewport.width >= 768 && viewport.width < 1200) {
@@ -296,7 +325,7 @@ test("keeps the Studio usable at every acceptance width", async ({
     expect(categoryHeight).toBeGreaterThanOrEqual(44);
 
     const railItemHeight = await page
-      .getByRole("radio", { name: /hair 05/i })
+      .getByRole("button", { name: /top 03 for emir/i })
       .evaluate((element) => element.getBoundingClientRect().height);
     expect(railItemHeight).toBeGreaterThanOrEqual(44);
 

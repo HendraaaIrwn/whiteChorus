@@ -32,6 +32,7 @@ export async function cleanupOutfits(
       outfit.downloadImagePath,
       outfit.thumbnailPath,
       outfit.socialImagePath,
+      storagePaths(outfit.id).shareImagePath,
     ].filter(Boolean) as string[];
     try {
       await storage.delete(paths);

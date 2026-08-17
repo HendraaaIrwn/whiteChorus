@@ -39,8 +39,20 @@ describe("dress-up model", () => {
   });
 
   it("always randomizes a publish-ready configuration", () => {
-    expect(isPublishReady(randomizeConfiguration(() => 0.2))).toBe(true);
-    expect(isPublishReady(randomizeConfiguration(() => 0.8))).toBe(true);
+    for (const value of [
+      randomizeConfiguration(() => 0.2),
+      randomizeConfiguration(() => 0.8),
+    ]) {
+      expect(isPublishReady(value)).toBe(true);
+      for (const character of [value.characterA, value.characterB]) {
+        expect(character.hairId).toBeNull();
+        expect(character.topId).toMatch(/^(emir|friska)-top-0[1-3]$/);
+        expect(character.bottomId).toMatch(/^(emir|friska)-bottom-0[1-3]$/);
+        expect(character.onePieceId).toBeNull();
+        expect(character.shoesId).toMatch(/^(emir|friska)-shoes-0[1-3]$/);
+        expect(character.accessoryIds).toEqual([]);
+      }
+    }
   });
 
   it("resets both characters to their unstyled base state", () => {
@@ -74,8 +86,14 @@ describe("dress-up model", () => {
       layers.find((layer) => layer.path.includes("character-b/base"))?.top,
     ).toBe(30);
     expect(
+      layers.find((layer) => layer.path.includes("character-b/base"))?.left,
+    ).toBe(48);
+    expect(
       layers.find((layer) => layer.path.includes("character-b/tops"))?.top,
     ).toBe(30);
+    expect(
+      layers.find((layer) => layer.path.includes("character-b/tops"))?.left,
+    ).toBe(48);
     expect(
       layers.find((layer) => layer.path.includes("character-a/base"))?.top,
     ).toBe(0);
