@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { motion, type Variants } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Check,
   ChevronLeft,
@@ -14,6 +14,9 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import {
   editorialEase,
   editorialMotionDurations,
+  selectableCardHover,
+  selectableCardSpring,
+  selectableCardTap,
 } from "@/components/motion/motion-presets";
 import { useHydratedReducedMotion } from "@/components/motion/use-hydrated-reduced-motion";
 import type { DressUpAsset } from "@/features/dress-up/catalog";
@@ -42,36 +45,6 @@ export const studioPanelLabels: Record<StudioPanel, string> = {
   shoes: "SHOES",
   accessory: "ACCESSORIES",
   background: "BACKGROUND",
-};
-
-const wardrobeItemVariants: Variants = {
-  rest: { opacity: 1, y: 0, scale: 1 },
-  hover: { opacity: 1, y: -6, scale: 1.05 },
-  selected: { opacity: 1, y: -4, scale: 1.035 },
-  selectedHover: { opacity: 1, y: -7, scale: 1.065 },
-  tap: { opacity: 1, y: -2, scale: 0.96 },
-};
-
-const wardrobeArtworkVariants: Variants = {
-  rest: { scale: 1 },
-  hover: { scale: 1.03 },
-  selected: { scale: 1 },
-  selectedHover: { scale: 1.03 },
-  tap: { scale: 0.99 },
-};
-
-const wardrobeInteractionSpring = {
-  type: "spring" as const,
-  stiffness: 350,
-  damping: 26,
-  mass: 0.6,
-};
-
-const wardrobeSelectionSpring = {
-  type: "spring" as const,
-  stiffness: 420,
-  damping: 32,
-  mass: 0.65,
 };
 
 function WardrobeArtwork({
@@ -139,7 +112,6 @@ function WardrobeIconItem({
   onSelect,
   reduceMotion,
   selected,
-  selectionLayoutId,
   tabIndex,
   targetName,
 }: {
@@ -152,7 +124,6 @@ function WardrobeIconItem({
   onSelect(): void;
   reduceMotion: boolean;
   selected: boolean;
-  selectionLayoutId: string;
   tabIndex: number;
   targetName: string;
 }) {
@@ -176,13 +147,9 @@ function WardrobeIconItem({
       tabIndex={tabIndex}
       layout={reduceMotion ? false : "position"}
       initial={false}
-      variants={wardrobeItemVariants}
-      animate={selected ? "selected" : "rest"}
-      whileHover={
-        reduceMotion ? undefined : selected ? "selectedHover" : "hover"
-      }
-      whileTap={reduceMotion ? undefined : "tap"}
-      transition={reduceMotion ? { duration: 0 } : wardrobeInteractionSpring}
+      whileHover={reduceMotion ? undefined : selectableCardHover}
+      whileTap={reduceMotion ? undefined : selectableCardTap}
+      transition={reduceMotion ? { duration: 0 } : selectableCardSpring}
       onClick={onSelect}
       onKeyDown={onKeyDown}
       data-wardrobe-item={item.id}
@@ -190,24 +157,20 @@ function WardrobeIconItem({
     >
       <span className="wardrobe-icon__hover-backplate" aria-hidden="true" />
       {selected ? (
-        <motion.span
-          className="wardrobe-icon__selection-frame"
-          layoutId={reduceMotion ? undefined : selectionLayoutId}
-          transition={reduceMotion ? { duration: 0 } : wardrobeSelectionSpring}
-          aria-hidden="true"
-        />
+        <span className="wardrobe-icon__selection-frame" aria-hidden="true" />
       ) : null}
-      <motion.span
-        className="wardrobe-icon__artwork"
-        variants={wardrobeArtworkVariants}
-        aria-hidden="true"
-      >
+      {selected ? (
+        <span className="wardrobe-icon__check" aria-hidden="true">
+          <Check />
+        </span>
+      ) : null}
+      <span className="wardrobe-icon__artwork" aria-hidden="true">
         <WardrobeArtwork
           eager={eager}
           item={item}
           onArtworkError={onArtworkError}
         />
-      </motion.span>
+      </span>
     </motion.button>
   );
 }
@@ -405,14 +368,9 @@ export function WardrobeDeck({
                 tabIndex={selected ? 0 : -1}
                 onClick={() => selectBackground(index)}
                 onKeyDown={(event) => handleBackgroundKeys(event, index)}
-                whileHover={reduceMotion ? undefined : { y: -5, scale: 1.03 }}
-                whileTap={reduceMotion ? undefined : { scale: 0.97 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 420,
-                  damping: 30,
-                  mass: 0.7,
-                }}
+                whileHover={reduceMotion ? undefined : selectableCardHover}
+                whileTap={reduceMotion ? undefined : selectableCardTap}
+                transition={selectableCardSpring}
                 data-cursor="DRESS"
               >
                 <WardrobeArtwork
@@ -522,7 +480,6 @@ export function WardrobeDeck({
                   onSelect={() => selectRailItem(index)}
                   reduceMotion={reduceMotion}
                   selected={selected}
-                  selectionLayoutId={`wardrobe-selection-${activeCharacter}-${activePanel}`}
                   tabIndex={
                     selected || (noCurrentSelection && index === 0) ? 0 : -1
                   }

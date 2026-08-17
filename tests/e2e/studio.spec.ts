@@ -606,9 +606,9 @@ test("uses the icon-only wardrobe hierarchy and text-only category tabs", async 
   expect(surfaces.unselectedItemBackground).toBe("rgba(0, 0, 0, 0)");
   expect(surfaces.selectedItemBorderWidth).toBe("0px");
   expect(surfaces.unselectedItemBorderWidth).toBe("0px");
-  expect(surfaces.selectedFrameBackground).not.toBe("rgba(0, 0, 0, 0)");
-  expect(surfaces.selectedFrameBorderRadius).toBe("16px");
-  expect(surfaces.selectedFrameBorderWidth).toBe("3px");
+  expect(surfaces.selectedFrameBackground).toBe("rgba(0, 0, 0, 0)");
+  expect(surfaces.selectedFrameBorderRadius).toBe("12px");
+  expect(surfaces.selectedFrameBorderWidth).toBe("2px");
   expect(surfaces.selectedFrameShadow).not.toBe("none");
   expect(surfaces.legacyChromeCount).toBe(0);
   expect(surfaces.itemImageCount).toBe(surfaces.itemButtonCount);
@@ -751,12 +751,12 @@ test("gives background cards polished hover and press feedback", async ({
   await expect(card).toHaveAttribute("aria-checked", "true");
 });
 
-test("keeps selected wardrobe icons above the exact hover and press treatment", async ({
+test("matches the background card hover and press treatment on outfit icons", async ({
   page,
 }, testInfo) => {
   test.skip(
     testInfo.project.name !== "chromium",
-    "Hover choreography runs in desktop Chromium.",
+    "Pointer choreography runs in desktop Chromium.",
   );
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/studio");
@@ -769,11 +769,14 @@ test("keeps selected wardrobe icons above the exact hover and press treatment", 
   const item = page
     .locator("#studio-item-panel button[data-wardrobe-item]")
     .nth(1);
+
   await expect(selectedItem).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await expect(selectedItem).toHaveCSS("border-width", "0px");
   await expect(
     selectedItem.locator(".wardrobe-icon__selection-frame"),
-  ).toHaveCSS("border-radius", "16px");
+  ).toHaveCSS("border-radius", "12px");
+  await expect(selectedItem.locator(".wardrobe-icon__check")).toBeVisible();
+
   await item.hover();
   await expect
     .poll(() =>
@@ -782,7 +785,7 @@ test("keeps selected wardrobe icons above the exact hover and press treatment", 
           new DOMMatrixReadOnly(getComputedStyle(element).transform).a,
       ),
     )
-    .toBeCloseTo(1.05, 2);
+    .toBeCloseTo(1.03, 2);
   await expect
     .poll(() =>
       item.evaluate(
@@ -790,7 +793,8 @@ test("keeps selected wardrobe icons above the exact hover and press treatment", 
           new DOMMatrixReadOnly(getComputedStyle(element).transform).m42,
       ),
     )
-    .toBeCloseTo(-6, 0);
+    .toBeCloseTo(-5, 0);
+
   const hovered = await item.evaluate((element) => ({
     background: getComputedStyle(element).backgroundColor,
     borderWidth: getComputedStyle(element).borderWidth,
@@ -809,18 +813,11 @@ test("keeps selected wardrobe icons above the exact hover and press treatment", 
       zIndex: getComputedStyle(element).zIndex,
     };
   });
+
   expect(hovered.background).toBe("rgba(0, 0, 0, 0)");
   expect(hovered.borderWidth).toBe("0px");
-  expect(hovered.matrix.a).toBeCloseTo(1.05, 2);
-  expect(hovered.matrix.m42).toBeCloseTo(-6, 0);
-  expect(
-    await item
-      .locator(".wardrobe-icon__artwork")
-      .evaluate(
-        (element) =>
-          new DOMMatrixReadOnly(getComputedStyle(element).transform).a,
-      ),
-  ).toBeCloseTo(1.03, 2);
+  expect(hovered.matrix.a).toBeCloseTo(1.03, 2);
+  expect(hovered.matrix.m42).toBeCloseTo(-5, 0);
   await expect(item.locator(".wardrobe-icon__hover-backplate")).toHaveCSS(
     "opacity",
     "1",
@@ -830,9 +827,7 @@ test("keeps selected wardrobe icons above the exact hover and press treatment", 
   expect(hovered.bounds.bottom).toBeLessThanOrEqual(hovered.railBounds.bottom);
   expect(hovered.bounds.left).toBeGreaterThanOrEqual(hovered.railBounds.left);
   expect(Number(hovered.zIndex)).toBe(2);
-  expect(Number(selectedWhileOtherHovered.zIndex)).toBeGreaterThan(
-    Number(hovered.zIndex),
-  );
+  expect(Number(selectedWhileOtherHovered.zIndex)).toBe(0);
   expect(selectedWhileOtherHovered.frameShadow).not.toBe("none");
 
   const bounds = await item.boundingBox();
@@ -849,17 +844,15 @@ test("keeps selected wardrobe icons above the exact hover and press treatment", 
           new DOMMatrixReadOnly(getComputedStyle(element).transform).a,
       ),
     )
-    .toBeCloseTo(0.96, 2);
+    .toBeCloseTo(0.97, 2);
   await page.mouse.up();
   await expect(item).toHaveAttribute("aria-pressed", "true");
   await expect(item.locator(".wardrobe-icon__selection-frame")).toBeVisible();
+  await expect(item.locator(".wardrobe-icon__check")).toBeVisible();
   await expect(item).toHaveCSS(
     "background-color",
     selectedWhileOtherHovered.background,
   );
-  expect(
-    Number(await item.evaluate((element) => getComputedStyle(element).zIndex)),
-  ).toBeGreaterThan(Number(hovered.zIndex));
 });
 
 test("matches the homepage hero CTA label motion", async ({
@@ -1138,8 +1131,8 @@ test("renders only real wardrobe icons in cohesive single rows and leaves unavai
               Math.abs(width - height) <= 1 && width >= 132 && width <= 176,
           ),
         ).toBe(true);
-        expect(geometry.gap).toBeGreaterThanOrEqual(10);
-        expect(geometry.gap).toBeLessThanOrEqual(17);
+        expect(geometry.gap).toBeGreaterThanOrEqual(5);
+        expect(geometry.gap).toBeLessThanOrEqual(7);
         await expect(
           rail.locator("button[data-wardrobe-item]").first(),
         ).toHaveAttribute("aria-pressed", /true|false/);

@@ -247,8 +247,7 @@ test("keeps the Studio usable at every acceptance width", async ({
     ).toBeGreaterThanOrEqual(120);
     expect(outfitGeometry.itemWidth).toBeLessThanOrEqual(176);
     expect(
-      outfitGeometry.gap >= (viewport.width < 768 ? 8 : 10) &&
-        outfitGeometry.gap <= (viewport.width < 768 ? 13 : 17),
+      outfitGeometry.gap >= 5 && outfitGeometry.gap <= 7,
       `${viewport.width}px outfit icon gaps must stay compact and consistent`,
     ).toBe(true);
     expect(outfitGeometry.railTopGap).toBeGreaterThanOrEqual(12);

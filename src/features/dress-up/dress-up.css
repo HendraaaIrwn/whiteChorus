@@ -279,7 +279,8 @@
 }
 
 .studio-character-group--friska[data-active]::after {
-  left: 17%;
+  left: 23%;
+  bottom: 9.9%;
 }
 
 .studio-production-layer--watermark {
@@ -344,16 +345,16 @@
 .character-switcher button {
   position: relative;
   display: flex;
-  min-width: 132px;
+  min-width: 168px;
   min-height: 52px;
   align-items: center;
   gap: 8px;
-  padding: 5px 11px 5px 6px;
+  padding: 5px 14px 5px 7px;
   border: 1px solid var(--studio-fg-heading);
   border-radius: 10px 28px 10px 24px;
   color: var(--studio-fg-heading);
   background: color-mix(in srgb, var(--studio-bg-card) 92%, transparent);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -399,14 +400,10 @@
 .character-switcher button > span:not(.character-switcher__indicator) {
   position: relative;
   z-index: 2;
-  display: grid;
-  gap: 2px;
+  display: block;
   text-align: left;
-}
-
-.character-switcher small {
-  font-size: 0.56rem;
-  letter-spacing: 0.12em;
+  line-height: 1.05;
+  white-space: nowrap;
 }
 
 .character-switcher__indicator {
@@ -740,7 +737,8 @@
   min-width: 0;
   min-height: calc(var(--studio-wardrobe-item-size) + 36px);
   align-items: center;
-  gap: clamp(8px, 2.5vw, 12px);
+  justify-content: flex-start;
+  gap: 6px;
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-inline: contain;
@@ -791,56 +789,64 @@
   isolation: isolate;
 }
 
-.item-rail button.is-selected {
-  z-index: 3;
-}
-
 .item-rail button:focus-visible {
-  outline: 3px solid var(--studio-brand);
+  outline: 3px solid var(--studio-orange);
   outline-offset: 4px;
 }
 
 .wardrobe-icon__hover-backplate,
 .wardrobe-icon__selection-frame {
   position: absolute;
-  inset: 4%;
+  inset: 0;
   z-index: 0;
   aspect-ratio: 1 / 1;
-  border-radius: 14px;
+  border-radius: 12px;
+  background: transparent;
   pointer-events: none;
 }
 
 .wardrobe-icon__hover-backplate {
-  border: 2px solid color-mix(in srgb, var(--studio-brand) 82%, transparent);
   opacity: 0;
-  background: color-mix(in srgb, var(--studio-aqua-soft) 78%, transparent);
-  box-shadow: 0 10px 24px rgb(44 46 52 / 12%);
-  transform: scale(0.92);
+  box-shadow: 0 8px 18px rgb(44 46 52 / 10%);
   transition:
-    opacity 180ms var(--studio-ease),
-    transform 240ms var(--studio-ease);
+    opacity 220ms var(--studio-ease),
+    box-shadow 220ms var(--studio-ease);
 }
 
 .wardrobe-icon__selection-frame {
-  border: 3px solid var(--studio-brand);
-  border-radius: 16px;
-  background: color-mix(
-    in srgb,
-    var(--studio-orange) 78%,
-    var(--studio-aqua-soft)
-  );
+  border: 2px solid var(--studio-fg-heading);
   box-shadow:
-    0 0 0 4px var(--studio-wardrobe-surface),
-    0 0 0 7px color-mix(in srgb, var(--studio-aqua-soft) 88%, transparent),
-    0 14px 30px rgb(44 46 52 / 16%);
+    0 0 0 2px var(--studio-wardrobe-surface),
+    0 0 0 4px var(--studio-orange),
+    0 8px 18px rgb(44 46 52 / 10%);
+}
+
+.wardrobe-icon__check {
+  position: absolute;
+  z-index: 3;
+  top: 5px;
+  right: 5px;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--studio-bg-page);
+  background: var(--studio-brand);
+  pointer-events: none;
+}
+
+.wardrobe-icon__check svg {
+  width: 12px;
+  stroke-width: 3;
 }
 
 .wardrobe-icon__artwork {
   position: relative;
   z-index: 2;
   display: grid;
-  width: 92%;
-  height: 92%;
+  width: 100%;
+  height: 100%;
   place-items: center;
 }
 
@@ -865,7 +871,7 @@
 }
 
 .item-thumbnail-frame--framed-square .item-thumbnail {
-  transform: scale(2.1);
+  transform: scale(2.3);
 }
 
 .item-none {
@@ -1242,29 +1248,25 @@ html.studio-custom-cursor-ready .site-footer--studio a {
   }
 
   .item-rail button:not(.is-selected):hover,
-  .item-rail button:not(.is-selected):focus-visible {
-    z-index: 2;
-  }
-
+  .item-rail button:not(.is-selected):focus-visible,
   .item-rail button.is-selected:hover,
   .item-rail button.is-selected:focus-visible {
-    z-index: 4;
+    z-index: 2;
   }
 
   .item-rail
     button:not(.is-selected):is(:hover, :focus-visible)
     .wardrobe-icon__hover-backplate {
     opacity: 1;
-    transform: scale(1);
   }
 
   .item-rail
     button.is-selected:is(:hover, :focus-visible)
     .wardrobe-icon__selection-frame {
     box-shadow:
-      0 0 0 4px var(--studio-wardrobe-surface),
-      0 0 0 8px var(--studio-aqua-soft),
-      0 20px 40px rgb(44 46 52 / 20%);
+      0 0 0 2px var(--studio-wardrobe-surface),
+      0 0 0 4px var(--studio-orange),
+      0 10px 22px rgb(44 46 52 / 12%);
   }
 
   .studio-action.button:hover:not(:disabled)
@@ -1339,7 +1341,7 @@ html.studio-custom-cursor-ready .site-footer--studio a {
 
   .item-rail {
     --studio-wardrobe-item-size: clamp(130px, calc(18vw - 10px), 158px);
-    gap: clamp(10px, 1.4vw, 16px);
+    gap: 6px;
   }
 
   .studio-action-dock {
@@ -1523,6 +1525,7 @@ html.studio-custom-cursor-ready .site-footer--studio a {
     min-height: 0;
     height: 100%;
     align-items: center;
+    gap: 6px;
   }
 
   .item-rail button {
@@ -1603,10 +1606,10 @@ html.studio-custom-cursor-ready .site-footer--studio a {
   }
 
   .character-switcher button {
-    min-width: 116px;
+    min-width: 150px;
     min-height: 48px;
-    padding-right: 8px;
-    font-size: 0.62rem;
+    padding-right: 11px;
+    font-size: 0.7rem;
   }
 
   .character-switcher button > img {
@@ -1649,18 +1652,15 @@ html.studio-custom-cursor-ready .site-footer--studio a {
   }
 
   .character-switcher button {
-    min-width: 102px;
+    min-width: 138px;
     min-height: 46px;
-    padding: 4px 7px 4px 4px;
+    padding: 4px 9px 4px 5px;
+    font-size: 0.66rem;
   }
 
   .character-switcher button > img {
     width: 34px;
     height: 34px;
-  }
-
-  .character-switcher small {
-    display: none;
   }
 
   .studio-action-dock {
@@ -1746,6 +1746,6 @@ html.studio-custom-cursor-ready .site-footer--studio a {
   }
 
   .item-thumbnail-frame--framed-square .item-thumbnail {
-    transform: scale(2.1) !important;
+    transform: scale(2.3) !important;
   }
 }
