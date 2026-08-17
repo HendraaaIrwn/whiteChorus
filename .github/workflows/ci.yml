@@ -58,6 +58,8 @@ jobs:
         run: pnpm test:postgres
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - name: Seed Hall of Fame looks for E2E
+        run: SEED_OUTFIT_COUNT=14 SEED_INELIGIBLE=1 SEED_SKIP_DAILY_WINNER=1 pnpm prisma:seed
       - run: pnpm test:e2e
 
   secret-scan:

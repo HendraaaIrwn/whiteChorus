@@ -13,6 +13,12 @@ async function main() {
     const outfitCount = Number(process.env.SEED_OUTFIT_COUNT ?? 100);
     if (!Number.isInteger(outfitCount) || outfitCount < 1 || outfitCount > 500)
       throw new Error("SEED_OUTFIT_COUNT must be an integer from 1 to 500");
+    // E2E seeding option: mark outfits as ineligible so they appear in the
+    // Hall of Fame but stay out of the Daily live ranking, and skip creating
+    // a demo daily winner/ratings so the daily-winners page keeps its
+    // debug-placeholder presentation that tests rely on.
+    const ineligible = process.env.SEED_INELIGIBLE === "1";
+    const skipDailyWinner = process.env.SEED_SKIP_DAILY_WINNER === "1";
 
     const guest = await prisma.guest.upsert({
       where: { sessionTokenHash: "0".repeat(64) },
@@ -49,6 +55,7 @@ async function main() {
             accessoryIds: [],
           },
           configurationHash: String(index).padStart(64, "0"),
+          isCompetitionEligible: !ineligible,
           finalImagePath: `fixtures/demo-${id}.webp`,
           downloadImagePath: `fixtures/demo-${id}.png`,
           thumbnailPath: `fixtures/demo-${id}-thumb.webp`,
@@ -60,51 +67,56 @@ async function main() {
       });
     }
 
-    const featured = await prisma.outfit.findUniqueOrThrow({
-      where: { shortCode: "DEMO01" },
-    });
-    for (let value = 1; value <= 5; value += 1) {
-      const ratingGuest = await prisma.guest.upsert({
-        where: { sessionTokenHash: String(value).repeat(64) },
-        update: {},
-        create: {
-          sessionTokenHash: String(value).repeat(64),
-          expiresAt: new Date(Date.now() + 14 * 86_400_000),
-        },
+    if (!skipDailyWinner) {
+      const featured = await prisma.outfit.findUniqueOrThrow({
+        where: { shortCode: "DEMO01" },
       });
-      await prisma.rating.upsert({
-        where: {
-          outfitId_guestId: { outfitId: featured.id, guestId: ratingGuest.id },
+      for (let value = 1; value <= 5; value += 1) {
+        const ratingGuest = await prisma.guest.upsert({
+          where: { sessionTokenHash: String(value).repeat(64) },
+          update: {},
+          create: {
+            sessionTokenHash: String(value).repeat(64),
+            expiresAt: new Date(Date.now() + 14 * 86_400_000),
+          },
+        });
+        await prisma.rating.upsert({
+          where: {
+            outfitId_guestId: {
+              outfitId: featured.id,
+              guestId: ratingGuest.id,
+            },
+          },
+          update: { value },
+          create: { outfitId: featured.id, guestId: ratingGuest.id, value },
+        });
+      }
+      await prisma.outfit.update({
+        where: { id: featured.id },
+        data: { ratingAverage: 3, ratingCount: 5, weightedScore: 3 },
+      });
+      const period = getDayPeriod(new Date());
+      await prisma.dailyWinner.upsert({
+        where: { sourceOutfitId: featured.id },
+        update: {
+          dayKey: period.key,
+          dayStart: period.start,
+          dayEnd: period.end,
         },
-        update: { value },
-        create: { outfitId: featured.id, guestId: ratingGuest.id, value },
+        create: {
+          sourceOutfitId: featured.id,
+          dayKey: period.key,
+          dayStart: period.start,
+          dayEnd: period.end,
+          shortCode: featured.shortCode,
+          winnerImagePath: featured.finalImagePath!,
+          socialImagePath: featured.socialImagePath,
+          finalAverage: 3,
+          finalRatingCount: 5,
+          finalWeightedScore: 3,
+        },
       });
     }
-    await prisma.outfit.update({
-      where: { id: featured.id },
-      data: { ratingAverage: 3, ratingCount: 5, weightedScore: 3 },
-    });
-    const period = getDayPeriod(new Date());
-    await prisma.dailyWinner.upsert({
-      where: { sourceOutfitId: featured.id },
-      update: {
-        dayKey: period.key,
-        dayStart: period.start,
-        dayEnd: period.end,
-      },
-      create: {
-        sourceOutfitId: featured.id,
-        dayKey: period.key,
-        dayStart: period.start,
-        dayEnd: period.end,
-        shortCode: featured.shortCode,
-        winnerImagePath: featured.finalImagePath!,
-        socialImagePath: featured.socialImagePath,
-        finalAverage: 3,
-        finalRatingCount: 5,
-        finalWeightedScore: 3,
-      },
-    });
   } finally {
     await prisma.$disconnect();
   }

@@ -43,9 +43,16 @@ function formatRemaining(end: string, now: number) {
 }
 
 function DailyCycleClock({ dayEnd }: { dayEnd: string }) {
-  const [now, setNow] = useState(() => Date.now());
+  // Render a stable placeholder on the server and the first client render so
+  // the markup matches; start the live countdown only after hydration. This
+  // avoids a server/client mismatch where `Date.now()` differs by a second.
+  const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
+    // Set the live time after hydration so the server-rendered placeholder
+    // matches the first client render; the one extra render is intentional.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNow(Date.now());
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
   }, []);
@@ -56,7 +63,9 @@ function DailyCycleClock({ dayEnd }: { dayEnd: string }) {
       aria-label="Time until this daily ranking closes"
     >
       <small>NEXT FINALIZATION</small>
-      <strong>{formatRemaining(dayEnd, now)}</strong>
+      <strong>
+        {now === null ? "--:--:--" : formatRemaining(dayEnd, now)}
+      </strong>
     </span>
   );
 }
