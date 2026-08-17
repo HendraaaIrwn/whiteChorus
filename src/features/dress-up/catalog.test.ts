@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CHARACTER_STAGE,
+  CHARACTER_WARDROBE_OFFSET,
   dressUpAssets,
   getAsset,
   getItems,
   normalizeCatalogConfiguration,
   renderLayersFor,
+  resolveLayerPosition,
   validateWardrobeManifest,
   wardrobeManifest,
 } from "@/features/dress-up/catalog";
@@ -174,5 +177,50 @@ describe("dress-up asset catalog", () => {
         },
       }),
     ).toThrow("cannot render as character-a/top");
+  });
+
+  it("resolves Friska wardrobe positions without moving her base body", () => {
+    const base = resolveLayerPosition("character-b", "base");
+    expect(base).toEqual({
+      x: CHARACTER_STAGE["character-b"].x,
+      y: CHARACTER_STAGE["character-b"].y,
+    });
+    expect(base).toEqual({ x: 0, y: 30 });
+
+    const top01 = getAsset("friska-top-01");
+    const bottom02 = getAsset("friska-bottom-02");
+    const shoes03 = getAsset("friska-shoes-03");
+    expect(top01?.registrationOffset).toEqual({ x: 1, y: 0 });
+    expect(bottom02?.registrationOffset).toEqual({ x: 1, y: 0 });
+    expect(shoes03?.registrationOffset).toEqual({ x: 0, y: 0 });
+
+    const topPosition = resolveLayerPosition("character-b", "wardrobe", top01);
+    expect(topPosition).toEqual({
+      x:
+        base.x +
+        CHARACTER_WARDROBE_OFFSET["character-b"].x +
+        (top01?.registrationOffset?.x ?? 0),
+      y:
+        base.y +
+        CHARACTER_WARDROBE_OFFSET["character-b"].y +
+        (top01?.registrationOffset?.y ?? 0),
+    });
+    expect(topPosition.x).toBe(107);
+    expect(topPosition.y).toBe(30);
+
+    const layers = renderLayersFor(defaultConfiguration);
+    const friskaBase = layers.find((layer) => layer.assetId === "character-b-base");
+    const friskaTop = layers.find((layer) => layer.assetId === "friska-top-01");
+    const emirTop = layers.find((layer) => layer.assetId === "emir-top-01");
+    expect(friskaBase).toMatchObject({ left: 0, top: 30, kind: "base" });
+    expect(friskaTop).toMatchObject({ left: 107, top: 30, kind: "wardrobe" });
+    expect(emirTop).toMatchObject({ left: 0, top: 0, kind: "wardrobe" });
+
+    // Shoes remain behind bottom in paint order.
+    const friskaShoes = layers.find((layer) => layer.assetId === "friska-shoes-01");
+    const friskaBottom = layers.find(
+      (layer) => layer.assetId === "friska-bottom-01",
+    );
+    expect(friskaShoes!.layerOrder).toBeLessThan(friskaBottom!.layerOrder);
   });
 });

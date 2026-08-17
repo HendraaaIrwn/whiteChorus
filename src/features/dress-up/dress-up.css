@@ -235,11 +235,25 @@
   max-width: none;
   object-fit: fill;
   object-position: left top;
+  /*
+   * Wardrobe registration shift from resolveLayerPosition (group-relative).
+   * Kept as CSS vars so Framer Motion opacity animation does not overwrite it.
+   */
+  --layer-shift-x: 0%;
+  --layer-shift-y: 0%;
+  translate: var(--layer-shift-x) var(--layer-shift-y);
 }
 
 .studio-character-group {
   inset: auto;
   transform-origin: center bottom;
+}
+
+.studio-character-wardrobe {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
 }
 
 .studio-character-group--emir {

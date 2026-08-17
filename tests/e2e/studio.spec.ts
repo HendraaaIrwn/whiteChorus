@@ -1329,8 +1329,11 @@ test("moves Friska through one registered character root with every garment laye
         const bounds = element.getBoundingClientRect();
         const style = getComputedStyle(element);
         return {
+          assetId: element.getAttribute("data-asset-id"),
           height: bounds.height,
           left: bounds.left,
+          layerLeft: Number(element.getAttribute("data-layer-left") ?? "0"),
+          layerTop: Number(element.getAttribute("data-layer-top") ?? "0"),
           styleLeft: style.left,
           styleTop: style.top,
           top: bounds.top,
@@ -1339,15 +1342,22 @@ test("moves Friska through one registered character root with every garment laye
       }),
     );
     const base = layerGeometry[0]!;
+    const outfitLayers = layerGeometry.slice(1);
+    // Friska base/body stays at the locked stage position. Wardrobe layers use
+    // CHARACTER_WARDROBE_OFFSET + per-item registrationOffset and must sit to
+    // the right of the base without changing base geometry.
+    expect(base.layerLeft).toBe(0);
+    expect(base.layerTop).toBe(30);
     expect(
-      layerGeometry.every(
+      outfitLayers.every(
         (layer) =>
-          Math.abs(layer.left - base.left) <= 0.1 &&
-          Math.abs(layer.top - base.top) <= 0.1 &&
+          layer.layerLeft > base.layerLeft &&
+          layer.layerTop === base.layerTop &&
           Math.abs(layer.width - base.width) <= 0.1 &&
           Math.abs(layer.height - base.height) <= 0.1 &&
           layer.styleLeft === "0px" &&
-          layer.styleTop === "0px",
+          layer.styleTop === "0px" &&
+          layer.left > base.left,
       ),
     ).toBe(true);
   }
@@ -1360,6 +1370,9 @@ test("moves Friska through one registered character root with every garment laye
       ".studio-character-group--friska",
     )!;
     const stage = document.querySelector<HTMLElement>(".studio-stage__art")!;
+    const friskaBase = friska.querySelector<HTMLElement>(
+      '[data-asset-id="character-b-base"]',
+    )!;
     return {
       emirX: Number(emir.dataset.stageX),
       emirY: Number(emir.dataset.stageY),
@@ -1367,17 +1380,19 @@ test("moves Friska through one registered character root with every garment laye
       friskaY: Number(friska.dataset.stageY),
       emirLeft: Number.parseFloat(getComputedStyle(emir).left),
       friskaLeft: Number.parseFloat(getComputedStyle(friska).left),
+      friskaBaseLayerLeft: Number(friskaBase.dataset.layerLeft ?? "0"),
+      friskaBaseLayerTop: Number(friskaBase.dataset.layerTop ?? "0"),
       stageWidth: stage.getBoundingClientRect().width,
     };
   });
   expect(registration.emirX).toBe(0);
   expect(registration.emirY).toBe(0);
-  expect(registration.friskaX).toBe(48);
+  // Friska body/stage root stays locked — wardrobe correction must not move it.
+  expect(registration.friskaX).toBe(0);
   expect(registration.friskaY).toBe(30);
-  expect(registration.friskaLeft - registration.emirLeft).toBeCloseTo(
-    registration.stageWidth * (48 / 1200),
-    0,
-  );
+  expect(registration.friskaBaseLayerLeft).toBe(0);
+  expect(registration.friskaBaseLayerTop).toBe(30);
+  expect(registration.friskaLeft - registration.emirLeft).toBeCloseTo(0, 0);
 });
 
 test("randomizes and resets the full studio configuration", async ({

@@ -8,8 +8,13 @@ import {
   selectItem,
 } from "@/features/dress-up/model";
 import {
+  CHARACTER_STAGE,
+  CHARACTER_WARDROBE_OFFSET,
+  getAsset,
   renderLayersFor,
+  resolveLayerPosition,
   validateCatalogConfiguration,
+  wardrobeManifest,
 } from "@/features/dress-up/catalog";
 import { randomizeConfiguration } from "@/features/dress-up/randomize";
 
@@ -76,6 +81,12 @@ describe("dress-up model", () => {
 
   it("orders both character bases, outfit layers, and watermark deterministically", () => {
     const layers = renderLayersFor(defaultConfiguration);
+    const friskaTop = getAsset("friska-top-01");
+    const friskaTopPosition = resolveLayerPosition(
+      "character-b",
+      "wardrobe",
+      friskaTop,
+    );
     expect(layers[0]?.path).toBe("/dress-up/character-a/base.webp");
     expect(
       layers.findIndex((layer) => layer.path.includes("character-b/base")),
@@ -84,16 +95,21 @@ describe("dress-up model", () => {
     );
     expect(
       layers.find((layer) => layer.path.includes("character-b/base"))?.top,
-    ).toBe(30);
+    ).toBe(CHARACTER_STAGE["character-b"].y);
     expect(
       layers.find((layer) => layer.path.includes("character-b/base"))?.left,
-    ).toBe(48);
+    ).toBe(CHARACTER_STAGE["character-b"].x);
     expect(
       layers.find((layer) => layer.path.includes("character-b/tops"))?.top,
-    ).toBe(30);
+    ).toBe(friskaTopPosition.y);
     expect(
       layers.find((layer) => layer.path.includes("character-b/tops"))?.left,
-    ).toBe(48);
+    ).toBe(friskaTopPosition.x);
+    expect(friskaTopPosition.x).toBeGreaterThan(
+      CHARACTER_STAGE["character-b"].x +
+        CHARACTER_WARDROBE_OFFSET["character-b"].x -
+        10,
+    );
     expect(
       layers.find((layer) => layer.path.includes("character-a/base"))?.top,
     ).toBe(0);
@@ -109,5 +125,52 @@ describe("dress-up model", () => {
       kind: "watermark",
       layerOrder: 1000,
     });
+  });
+
+  it("keeps Friska base fixed while shifting only wardrobe layers right", () => {
+    const base = resolveLayerPosition("character-b", "base");
+    const top = resolveLayerPosition(
+      "character-b",
+      "wardrobe",
+      getAsset("friska-top-01"),
+    );
+    const emirTop = resolveLayerPosition(
+      "character-a",
+      "wardrobe",
+      getAsset("emir-top-01"),
+    );
+
+    expect(base).toEqual({
+      x: CHARACTER_STAGE["character-b"].x,
+      y: CHARACTER_STAGE["character-b"].y,
+    });
+    expect(base).toEqual({ x: 0, y: 30 });
+    expect(top.x).toBeGreaterThan(base.x);
+    expect(top.y).toBe(base.y);
+    expect(emirTop).toEqual({ x: 0, y: 0 });
+  });
+
+  it("renders Friska shoes behind her bottom layer", () => {
+    const friskaBottom = wardrobeManifest.find(
+      (item) => item.id === "friska-bottom-01",
+    );
+    const friskaShoes = wardrobeManifest.find(
+      (item) => item.id === "friska-shoes-01",
+    );
+    expect(friskaBottom).toBeDefined();
+    expect(friskaShoes).toBeDefined();
+    expect(friskaShoes!.layerOrder).toBeLessThan(friskaBottom!.layerOrder);
+  });
+
+  it("renders Emir shoes behind his bottom layer", () => {
+    const emirBottom = wardrobeManifest.find(
+      (item) => item.id === "emir-bottom-01",
+    );
+    const emirShoes = wardrobeManifest.find(
+      (item) => item.id === "emir-shoes-01",
+    );
+    expect(emirBottom).toBeDefined();
+    expect(emirShoes).toBeDefined();
+    expect(emirShoes!.layerOrder).toBeLessThan(emirBottom!.layerOrder);
   });
 });

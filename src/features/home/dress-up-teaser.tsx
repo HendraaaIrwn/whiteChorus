@@ -151,8 +151,9 @@ export function DressUpTeaser() {
                 fill
                 sizes="(max-width: 767px) 94vw, 58vw"
                 style={{
-                  top: layer.top ? `${(layer.top / 1600) * 100}%` : 0,
                   zIndex: layer.layerOrder,
+                  ["--layer-shift-x" as string]: `${(layer.left / 1200) * 100}%`,
+                  ["--layer-shift-y" as string]: `${(layer.top / 1600) * 100}%`,
                 }}
               />
             ))}
@@ -185,7 +186,8 @@ export function DressUpTeaser() {
                     fill
                     sizes="(max-width: 767px) 94vw, 58vw"
                     style={{
-                      top: layer.top ? `${(layer.top / 1600) * 100}%` : 0,
+                      ["--layer-shift-x" as string]: `${(layer.left / 1200) * 100}%`,
+                      ["--layer-shift-y" as string]: `${(layer.top / 1600) * 100}%`,
                     }}
                   />
                 </motion.div>

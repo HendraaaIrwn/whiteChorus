@@ -5,6 +5,11 @@ import type {
   OutfitCategory,
 } from "@/features/dress-up/model";
 
+export type RegistrationOffset = {
+  x: number;
+  y: number;
+};
+
 export type DressUpAsset = {
   id: string;
   legacyIds?: readonly string[];
@@ -18,6 +23,11 @@ export type DressUpAsset = {
   layerOrder: number;
   active: boolean;
   swatch: string;
+  /**
+   * Per-asset wardrobe registration correction against the character body.
+   * Applied on top of CHARACTER_WARDROBE_OFFSET. Does not move the base body.
+   */
+  registrationOffset?: RegistrationOffset;
 };
 
 export type RenderLayer = {
@@ -30,10 +40,69 @@ export type RenderLayer = {
   kind: "base" | "wardrobe" | "watermark";
 };
 
+/**
+ * LEVEL A — STAGE POSITION
+ * Where each character stands as a whole inside the 1200x1600 stage canvas.
+ * Applies to the character root (base body).
+ *
+ * Friska (character-b) base/body is locked at x=0, y=30.
+ * Do NOT move this to fix wardrobe alignment — use wardrobe offsets instead.
+ */
 export const CHARACTER_STAGE = {
   "character-a": { x: 0, y: 0, scale: 1 },
-  "character-b": { x: 48, y: 30, scale: 1 },
+  "character-b": { x: 0, y: 30, scale: 1 },
 } as const;
+
+/**
+ * LEVEL B — BASE REGISTRATION
+ * Optional fine-alignment of the base body relative to stage.
+ * Kept at zero for both characters; Friska's approved body position is stage-only.
+ */
+export const CHARACTER_REGISTRATION = {
+  "character-a": { x: 0, y: 0 },
+  "character-b": { x: 0, y: 0 },
+} as const;
+
+/**
+ * LEVEL C — GLOBAL WARDROBE CORRECTION
+ * Shared shift applied to every wardrobe layer of a character, relative to that
+ * character's base body. Does NOT move the base/body.
+ *
+ * Friska wardrobe artwork is painted too far left inside the shared 1200×1600
+ * canvas; shift garments right so they sit on the body. Emir needs no correction.
+ */
+export const CHARACTER_WARDROBE_OFFSET = {
+  "character-a": { x: 0, y: 0 },
+  "character-b": { x: 106, y: 0 },
+} as const;
+
+/**
+ * Canonical layer position resolver shared by client preview and Sharp compositor.
+ *
+ * base     → stage + base registration
+ * wardrobe → base + character wardrobe offset + per-item registration offset
+ */
+export function resolveLayerPosition(
+  characterId: CharacterId,
+  kind: "base" | "wardrobe",
+  item?: Pick<DressUpAsset, "registrationOffset"> | null,
+): RegistrationOffset {
+  const stage = CHARACTER_STAGE[characterId];
+  const registration = CHARACTER_REGISTRATION[characterId];
+  const baseLeft = stage.x + registration.x;
+  const baseTop = stage.y + registration.y;
+
+  if (kind === "base") {
+    return { x: baseLeft, y: baseTop };
+  }
+
+  const wardrobe = CHARACTER_WARDROBE_OFFSET[characterId];
+  const itemOffset = item?.registrationOffset ?? { x: 0, y: 0 };
+  return {
+    x: baseLeft + wardrobe.x + itemOffset.x,
+    y: baseTop + wardrobe.y + itemOffset.y,
+  };
+}
 
 export const productionAssets = {
   characterBases: [
@@ -75,13 +144,32 @@ const swatches = [
   "var(--yellow-400)",
 ];
 
-export const wardrobeLayerOrder: Record<OutfitCategory, number> = {
-  bottom: 30,
-  shoes: 35,
-  top: 40,
-  "one-piece": 45,
-  hair: 70,
-  accessory: 80,
+/**
+ * Centralized render-order definition per character (higher paints later).
+ * Both characters use the same stacking: shoes paint first (behind bottom),
+ * then bottom, then top. This ensures pants/skirts/dress-bottoms always
+ * appear in front of shoes for a natural overlap at the hem/ankle.
+ */
+export const wardrobeLayerOrder: Record<
+  CharacterId,
+  Record<OutfitCategory, number>
+> = {
+  "character-a": {
+    shoes: 30,
+    bottom: 35,
+    top: 40,
+    "one-piece": 45,
+    hair: 70,
+    accessory: 80,
+  },
+  "character-b": {
+    shoes: 30,
+    bottom: 35,
+    top: 40,
+    "one-piece": 45,
+    hair: 70,
+    accessory: 80,
+  },
 };
 
 const characterLayerOffset: Record<CharacterId, number> = {
@@ -98,10 +186,33 @@ type WardrobeManifestEntry = {
   iconSrc: string;
   layerSrc: string;
   iconPresentation: DressUpAsset["iconPresentation"];
+  registrationOffset?: RegistrationOffset;
+};
+
+/**
+ * Per-asset Friska wardrobe fine-tuning on top of CHARACTER_WARDROBE_OFFSET.
+ * Values are pixel deltas inside the 1200×1600 stage (positive x = right).
+ * Calibrated against body shoulder/leg/foot centers without moving the base.
+ */
+const friskaItemRegistrationOffsets: Record<string, RegistrationOffset> = {
+  "friska-top-01": { x: 1, y: 0 },
+  "friska-top-02": { x: 5, y: 0 },
+  "friska-top-03": { x: -4, y: 0 },
+  "friska-bottom-01": { x: 1, y: 0 },
+  "friska-bottom-02": { x: 1, y: 0 },
+  "friska-bottom-03": { x: 5, y: 0 },
+  "friska-shoes-01": { x: -2, y: 0 },
+  "friska-shoes-02": { x: -2, y: 0 },
+  "friska-shoes-03": { x: 0, y: 0 },
 };
 
 function wardrobeItem(entry: WardrobeManifestEntry): DressUpAsset {
   const number = String(entry.ordinal).padStart(2, "0");
+  const registrationOffset =
+    entry.registrationOffset ??
+    (entry.characterId === "character-b"
+      ? friskaItemRegistrationOffsets[entry.id]
+      : undefined);
   return {
     id: entry.id,
     legacyIds: [entry.legacyId],
@@ -113,10 +224,11 @@ function wardrobeItem(entry: WardrobeManifestEntry): DressUpAsset {
     assetSrcs: [entry.layerSrc],
     iconPresentation: entry.iconPresentation,
     layerOrder:
-      wardrobeLayerOrder[entry.category] +
+      wardrobeLayerOrder[entry.characterId][entry.category] +
       characterLayerOffset[entry.characterId],
     active: true,
     swatch: swatches[entry.ordinal - 1]!,
+    ...(registrationOffset ? { registrationOffset } : {}),
   };
 }
 
@@ -375,30 +487,34 @@ export function renderLayersFor(value: DressUpConfiguration): RenderLayer[] {
 
   return [
     ...productionAssets.characterBases.map(
-      ({ characterId, path, layerOrder }) => ({
-        assetId: `${characterId}-base`,
-        path,
-        layerOrder,
-        characterId,
-        kind: "base" as const,
-        left: CHARACTER_STAGE[characterId].x,
-        top: CHARACTER_STAGE[characterId].y,
-      }),
+      ({ characterId, path, layerOrder }) => {
+        const position = resolveLayerPosition(characterId, "base");
+        return {
+          assetId: `${characterId}-base`,
+          path,
+          layerOrder,
+          characterId,
+          kind: "base" as const,
+          left: position.x,
+          top: position.y,
+        };
+      },
     ),
     ...equippedItems.flatMap((asset) =>
-      asset.assetSrcs.map((path, index) => ({
-        assetId: asset.id,
-        path,
-        layerOrder: asset.layerOrder + index / 100,
-        characterId: asset.characterId,
-        kind: "wardrobe" as const,
-        ...(asset.characterId
-          ? {
-              left: CHARACTER_STAGE[asset.characterId].x,
-              top: CHARACTER_STAGE[asset.characterId].y,
-            }
-          : { left: 0, top: 0 }),
-      })),
+      asset.assetSrcs.map((path, index) => {
+        const position = asset.characterId
+          ? resolveLayerPosition(asset.characterId, "wardrobe", asset)
+          : { x: 0, y: 0 };
+        return {
+          assetId: asset.id,
+          path,
+          layerOrder: asset.layerOrder + index / 100,
+          characterId: asset.characterId,
+          kind: "wardrobe" as const,
+          left: position.x,
+          top: position.y,
+        };
+      }),
     ),
     {
       assetId: "white-chorus-watermark",
