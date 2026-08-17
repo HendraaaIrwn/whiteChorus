@@ -750,6 +750,13 @@ main:focus {
   display: none;
 }
 
+/* Not gated behind (hover: hover): touch devices can enter :hover state via
+   sticky tap hover and synthetic hovers, and a decoration color causes no
+   layout shift, so it is safe to apply on every device. */
+.site-footer a:hover {
+  text-decoration-color: currentcolor;
+}
+
 /* Pointer-only enhancements */
 @media (hover: hover) and (pointer: fine) {
   .button:hover:not(:disabled),
@@ -762,10 +769,6 @@ main:focus {
   .site-header nav a:hover .nav-indicator,
   .mobile-hall-link:hover {
     background: var(--color-rating);
-  }
-
-  .site-footer a:hover {
-    text-decoration-color: currentcolor;
   }
 }
 
