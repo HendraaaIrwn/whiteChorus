@@ -65,6 +65,7 @@ describe("getOutfitDetail viewer state", () => {
         isDailyWinner: true,
         viewerRating: null,
         finalImageUrl: "https://storage.test/outfits/outfit-1/final.webp",
+        shareImageUrl: "/api/outfits/outfit-1/share-image",
       }),
     );
   });

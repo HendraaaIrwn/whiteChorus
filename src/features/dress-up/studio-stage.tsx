@@ -8,7 +8,13 @@ import {
   useSpring,
   type MotionValue,
 } from "framer-motion";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 
 import {
   editorialEase,
@@ -16,6 +22,7 @@ import {
 } from "@/components/motion/motion-presets";
 import { useHydratedReducedMotion } from "@/components/motion/use-hydrated-reduced-motion";
 import {
+  CHARACTER_STAGE,
   getAsset,
   renderLayersFor,
   type RenderLayer,
@@ -50,11 +57,82 @@ function CharacterLayers({
   randomizing: boolean;
   reduceMotion: boolean;
 }) {
+  const stage = CHARACTER_STAGE[character];
+  const baseLayers = layers.filter((layer) => layer.kind === "base");
+  const outfitLayers = layers.filter((layer) => layer.kind !== "base");
+
+  /**
+   * Character group is already at CHARACTER_STAGE. RenderLayer left/top are
+   * absolute stage coords from resolveLayerPosition — convert to group-relative
+   * so the base stays fixed while wardrobe-only corrections still apply.
+   *
+   * Registration uses CSS --layer-shift-* variables (not FM transform props) so
+   * opacity enter/exit animation cannot clobber outfit alignment.
+   */
+  const layerOffsetStyle = (layer: RenderLayer): CSSProperties => {
+    const relX = layer.left - stage.x;
+    const relY = layer.top - stage.y;
+    return {
+      zIndex: layer.layerOrder % 100,
+      ["--layer-shift-x" as string]: `${(relX / 1200) * 100}%`,
+      ["--layer-shift-y" as string]: `${(relY / 1600) * 100}%`,
+    };
+  };
+
+  const renderLayer = (layer: RenderLayer, index: number) => (
+    <motion.img
+      key={`${layer.assetId}:${layer.path}`}
+      className="studio-production-layer"
+      data-asset-id={layer.assetId}
+      data-character={character}
+      data-layer-left={layer.left}
+      data-layer-top={layer.top}
+      src={layer.path}
+      alt=""
+      width={1200}
+      height={1600}
+      fetchPriority={layer.kind === "base" ? "high" : undefined}
+      onError={() => onAssetError(layer.path)}
+      style={layerOffsetStyle(layer)}
+      initial={reduceMotion || layer.kind === "base" ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={
+        reduceMotion || layer.kind === "base"
+          ? undefined
+          : {
+              opacity: 0,
+              transition: {
+                duration: editorialMotionDurations.layerExit,
+              },
+            }
+      }
+      transition={{
+        delay:
+          reduceMotion || layer.kind === "base" || !randomizing
+            ? 0
+            : index * 0.035,
+        duration: reduceMotion
+          ? 0
+          : layer.kind === "base"
+            ? 0.01
+            : editorialMotionDurations.layerEnter,
+        ease: editorialEase,
+      }}
+    />
+  );
+
   return (
     <motion.div
       className={`studio-character-group studio-character-group--${character === "character-a" ? "emir" : "friska"}`}
       data-active={active || undefined}
-      style={{ x: pointerX }}
+      data-stage-x={stage.x}
+      data-stage-y={stage.y}
+      style={{
+        left: `${(stage.x / 1200) * 100}%`,
+        top: `${(stage.y / 1600) * 100}%`,
+        scale: stage.scale,
+        x: pointerX,
+      }}
       animate={
         reduceMotion
           ? { opacity: 1 }
@@ -63,54 +141,17 @@ function CharacterLayers({
       transition={{ duration: reduceMotion ? 0 : 0.36, ease: editorialEase }}
     >
       <AnimatePresence initial={false}>
-        {layers
+        {baseLayers
           .filter((layer) => !failedAssets.has(layer.path))
-          .map((layer, index) => (
-            <motion.img
-              key={layer.path}
-              className="studio-production-layer"
-              src={layer.path}
-              alt=""
-              width={1200}
-              height={1600}
-              fetchPriority={layer.kind === "base" ? "high" : undefined}
-              onError={() => onAssetError(layer.path)}
-              style={{
-                left: layer.left ? `${(layer.left / 1200) * 100}%` : 0,
-                top: layer.top ? `${(layer.top / 1600) * 100}%` : 0,
-              }}
-              initial={
-                reduceMotion || layer.kind === "base"
-                  ? false
-                  : { opacity: 0, scale: 1.04 }
-              }
-              animate={{ opacity: 1, scale: 1 }}
-              exit={
-                reduceMotion || layer.kind === "base"
-                  ? undefined
-                  : {
-                      opacity: 0,
-                      scale: 0.97,
-                      transition: {
-                        duration: editorialMotionDurations.layerExit,
-                      },
-                    }
-              }
-              transition={{
-                delay:
-                  reduceMotion || layer.kind === "base" || !randomizing
-                    ? 0
-                    : index * 0.035,
-                duration: reduceMotion
-                  ? 0
-                  : layer.kind === "base"
-                    ? 0.01
-                    : editorialMotionDurations.layerEnter,
-                ease: editorialEase,
-              }}
-            />
-          ))}
+          .map((layer, index) => renderLayer(layer, index))}
       </AnimatePresence>
+      <div className="studio-character-wardrobe">
+        <AnimatePresence initial={false}>
+          {outfitLayers
+            .filter((layer) => !failedAssets.has(layer.path))
+            .map((layer, index) => renderLayer(layer, index))}
+        </AnimatePresence>
+      </div>
     </motion.div>
   );
 }
@@ -259,17 +300,17 @@ export function CharacterStage({
           aria-label={`Emir and Friska on the ${background?.label ?? "selected"} background.`}
         >
           <AnimatePresence initial={false} mode="popLayout">
-            {background?.renderPaths[0] &&
-            !failedAssets.has(background.renderPaths[0]) ? (
+            {background?.assetSrcs[0] &&
+            !failedAssets.has(background.assetSrcs[0]) ? (
               <motion.img
-                key={background.renderPaths[0]}
+                key={background.assetSrcs[0]}
                 className="studio-stage__background"
-                src={background.renderPaths[0]}
+                src={background.assetSrcs[0]}
                 alt=""
                 width={1200}
                 height={1600}
                 fetchPriority="high"
-                onError={() => markAssetFailed(background.renderPaths[0]!)}
+                onError={() => markAssetFailed(background.assetSrcs[0]!)}
                 style={{ x: smoothBackground }}
                 initial={
                   reduceMotion

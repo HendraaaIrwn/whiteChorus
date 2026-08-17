@@ -4,7 +4,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getServerEnv } from "@/config/env";
-import { productionAssets } from "@/features/dress-up/catalog";
 import { findGuest } from "@/features/guest-session/guest-session";
 import { getRelatedOutfits } from "@/features/hall-of-fame/hall-of-fame";
 import { CustomCursor } from "@/features/home/home-motion";
@@ -36,7 +35,25 @@ export async function generateMetadata({
       description:
         "Rate this anonymous look and discover more styles in the White Chorus Hall of Fame.",
       openGraph: {
-        images: [outfit.socialImageUrl || productionAssets.defaultSocialPath],
+        images: [
+          {
+            url: outfit.shareImageUrl,
+            width: 720,
+            height: 1280,
+            alt: `Framed White Chorus Look #${outfit.shortCode}.`,
+          },
+        ],
+      },
+      twitter: {
+        card: "summary_large_image",
+        images: [
+          {
+            url: outfit.shareImageUrl,
+            width: 720,
+            height: 1280,
+            alt: `Framed White Chorus Look #${outfit.shortCode}.`,
+          },
+        ],
       },
       alternates: { canonical: `/outfits/${outfit.id}` },
     };

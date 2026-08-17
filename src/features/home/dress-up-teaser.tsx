@@ -123,17 +123,17 @@ export function DressUpTeaser() {
             aria-hidden="true"
           />
           <AnimatePresence mode="popLayout" initial={false}>
-            {background?.renderPaths[0] ? (
+            {background?.assetSrcs[0] ? (
               <motion.div
                 className="home-teaser__background"
-                key={background.renderPaths[0]}
+                key={background.assetSrcs[0]}
                 initial={reduceMotion ? false : { opacity: 0, scale: 1.03 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: reduceMotion ? 0 : 0.28 }}
               >
                 <Image
-                  src={background.renderPaths[0]}
+                  src={background.assetSrcs[0]}
                   alt=""
                   fill
                   sizes="(max-width: 767px) 94vw, 58vw"
@@ -151,8 +151,9 @@ export function DressUpTeaser() {
                 fill
                 sizes="(max-width: 767px) 94vw, 58vw"
                 style={{
-                  top: layer.top ? `${(layer.top / 1600) * 100}%` : 0,
                   zIndex: layer.layerOrder,
+                  ["--layer-shift-x" as string]: `${(layer.left / 1200) * 100}%`,
+                  ["--layer-shift-y" as string]: `${(layer.top / 1600) * 100}%`,
                 }}
               />
             ))}
@@ -185,7 +186,8 @@ export function DressUpTeaser() {
                     fill
                     sizes="(max-width: 767px) 94vw, 58vw"
                     style={{
-                      top: layer.top ? `${(layer.top / 1600) * 100}%` : 0,
+                      ["--layer-shift-x" as string]: `${(layer.left / 1200) * 100}%`,
+                      ["--layer-shift-y" as string]: `${(layer.top / 1600) * 100}%`,
                     }}
                   />
                 </motion.div>
@@ -302,7 +304,7 @@ export function DressUpTeaser() {
                   />
                 ) : null}
                 <Image
-                  src={item.previewPath}
+                  src={item.iconSrc}
                   alt=""
                   width={180}
                   height={180}

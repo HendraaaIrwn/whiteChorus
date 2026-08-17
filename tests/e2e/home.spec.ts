@@ -363,10 +363,10 @@ test("keeps teaser choices local and leaves the Studio draft untouched", async (
   await page.goto("/", { waitUntil: "domcontentloaded" });
 
   await page.getByRole("button", { name: "FRISKA", exact: true }).click();
-  await page.getByRole("tab", { name: "ONE-PIECE" }).click();
-  await page.getByRole("radio", { name: "one piece 03" }).click();
+  await page.getByRole("tab", { name: "TOPS" }).click();
+  await page.getByRole("radio", { name: "top 03" }).click();
   await expect(
-    page.locator('.home-teaser__layer[src*="b-one-piece-03"]'),
+    page.locator('.home-teaser__layer[src*="b-top-03"]'),
   ).toBeVisible();
 
   await page.getByRole("tab", { name: "BACKGROUND" }).click();

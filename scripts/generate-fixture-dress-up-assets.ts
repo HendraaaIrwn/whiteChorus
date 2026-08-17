@@ -107,8 +107,8 @@ async function createThumbnail(
 
 async function main() {
   for (const [index, asset] of backgroundAssets.entries()) {
-    await writeSvg(asset.renderPaths[0]!, backgroundSvg(index));
-    await createThumbnail(asset.renderPaths[0]!, asset.previewPath, true);
+    await writeSvg(asset.assetSrcs[0]!, backgroundSvg(index));
+    await createThumbnail(asset.assetSrcs[0]!, asset.iconSrc, true);
   }
 
   await writeSvg(
@@ -127,8 +127,9 @@ async function main() {
 
   for (const [index, asset] of dressUpAssets.entries()) {
     if (asset.category === "background") continue;
-    await writeSvg(asset.renderPaths[0]!, itemSvg(asset, index));
-    await createThumbnail(asset.renderPaths[0]!, asset.previewPath, false);
+    if (asset.iconPresentation === "framed-square") continue;
+    await writeSvg(asset.assetSrcs[0]!, itemSvg(asset, index));
+    await createThumbnail(asset.assetSrcs[0]!, asset.iconSrc, false);
   }
 
   console.log("Generated fixture dress-up assets.");

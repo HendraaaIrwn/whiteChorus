@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
   },
   outputFileTracingIncludes: {
     "/api/outfits": ["./public/dress-up/**/*", "./public/brand/**/*"],
+    "/api/outfits/**/*": [
+      "./public/dress-up/previews/default-look-share.png",
+      "./public/brand/shareables-frame.png",
+    ],
   },
   async headers() {
     return [

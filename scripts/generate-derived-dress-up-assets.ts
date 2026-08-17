@@ -12,17 +12,10 @@ import {
   defaultConfiguration,
   type CharacterId,
 } from "../src/features/dress-up/model";
+import { composeShareImage } from "../src/server/rendering/share-image-renderer";
 
 const root = path.join(process.cwd(), "public");
 const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
-const officialWardrobeIds = [
-  "a-top-01",
-  "a-bottom-01",
-  "a-shoes-01",
-  "b-top-01",
-  "b-bottom-01",
-  "b-shoes-01",
-] as const;
 
 function publicFile(urlPath: string) {
   return path.join(root, urlPath.replace(/^\//, ""));
@@ -30,32 +23,6 @@ function publicFile(urlPath: string) {
 
 async function ensureParent(file: string) {
   await mkdir(path.dirname(file), { recursive: true });
-}
-
-async function generateOfficialWardrobeThumbnails() {
-  await Promise.all(
-    officialWardrobeIds.map(async (id) => {
-      const asset = getAsset(id);
-      const renderPath = asset?.renderPaths[0];
-      if (!asset || !renderPath)
-        throw new Error(`Official wardrobe asset is missing: ${id}`);
-
-      const destination = publicFile(asset.previewPath);
-      await ensureParent(destination);
-      await sharp(publicFile(renderPath))
-        .trim({ threshold: 8 })
-        .resize(156, 196, { fit: "contain", background: transparent })
-        .extend({
-          top: 22,
-          bottom: 22,
-          left: 12,
-          right: 12,
-          background: transparent,
-        })
-        .webp({ lossless: true, effort: 6 })
-        .toFile(destination);
-    }),
-  );
 }
 
 async function characterLook(characterId: CharacterId) {
@@ -80,8 +47,6 @@ async function characterLook(characterId: CharacterId) {
 async function main() {
   const background = getAsset(defaultConfiguration.backgroundId);
   if (!background) throw new Error("Default background is missing.");
-
-  await generateOfficialWardrobeThumbnails();
 
   const [emir, friska] = await Promise.all([
     characterLook("character-a"),
@@ -115,7 +80,7 @@ async function main() {
       .toFile(destination);
   }
 
-  const scene = await sharp(publicFile(background.renderPaths[0]!))
+  const scene = await sharp(publicFile(background.assetSrcs[0]!))
     .resize(1200, 1600, { fit: "cover" })
     .composite([{ input: emir }, { input: friska }])
     .webp({ quality: 94, smartSubsample: true, effort: 6 })
@@ -136,6 +101,10 @@ async function main() {
     .jpeg({ quality: 90 })
     .toFile(socialDestination);
 
+  const shareDestination = publicFile(productionAssets.defaultSharePath);
+  await ensureParent(shareDestination);
+  await sharp(await composeShareImage(scene)).toFile(shareDestination);
+
   const iconSource = await sharp(scene)
     .extract({ left: 250, top: 180, width: 700, height: 700 })
     .png()
@@ -147,7 +116,7 @@ async function main() {
     .toFile("src/app/apple-icon.png");
 
   console.log(
-    "Generated synchronized wardrobe thumbnails, character, homepage, social, and icon assets.",
+    "Generated synchronized character, homepage, social, share, and icon assets.",
   );
 }
 

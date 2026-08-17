@@ -1,51 +1,122 @@
 import Link from "next/link";
 
 import { FallbackImage } from "@/components/ui/fallback-image";
-import type { DailyWinnerSnapshot } from "@/features/daily-winners/daily-winners";
+import { DailyWinnerBadge } from "@/features/daily-winners/daily-winner-badge";
+import type { DailyWinnerDisplaySnapshot } from "@/features/daily-winners/daily-winner-debug";
+import { formatDailyWinnerDate } from "@/features/daily-winners/daily-winner-format";
 import { productionAssets } from "@/features/dress-up/catalog";
 import { EntryAudioGate } from "@/features/audio/entry-audio-gate";
+import { Sparkle } from "@/features/home/home-doodles";
 import {
-  DailyCompetitionDoodles,
-  SmoothRankingLink,
-} from "@/features/daily-winners/daily-competition-motion";
-import { Bow, Sparkle } from "@/features/home/home-doodles";
-import { HomeReveal, MaskedHeading } from "@/features/home/home-motion";
+  HomeReveal,
+  ImageReveal,
+  Magnetic,
+  MaskedHeading,
+} from "@/features/home/home-motion";
 
-function formatWinnerDay(dayKey: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${dayKey}T00:00:00.000Z`));
-}
-
-export function DailyWinnerHero() {
+export function LatestDailyWinner({
+  completedDayKey,
+  state,
+  winner,
+}: {
+  completedDayKey: string;
+  state: "winner" | "empty" | "error";
+  winner: DailyWinnerDisplaySnapshot | null;
+}) {
   return (
-    <section className="winner-hero-scene" aria-labelledby="winner-hero-title">
-      <div className="winner-container winner-grid-system winner-hero-scene__layout">
-        <span className="winner-label winner-hero-scene__label">
-          01 · DAILY COMPETITION
+    <section
+      className="winner-latest"
+      aria-labelledby="winner-latest-title"
+      data-winner-state={state}
+    >
+      <div className="winner-container winner-grid-system winner-latest__layout">
+        <span className="winner-label winner-latest__label">
+          01 · LATEST DAILY WINNER
         </span>
         <MaskedHeading
-          id="winner-hero-title"
-          className="winner-hero-scene__title"
+          id="winner-latest-title"
+          className="winner-latest__title"
           level="h1"
-          lines={["DAILY", "WINNER"]}
+          lines={["LATEST", "DAILY WINNER"]}
           intro
         />
-        <HomeReveal className="winner-hero-scene__copy" delay={0.24}>
-          <p>
-            One finalized look owns the completed day. Today&apos;s chorus keeps
-            moving below.
-          </p>
-          <SmoothRankingLink className="winner-editorial-link">
-            FOLLOW THE LIVE RANKING <span aria-hidden="true">↓</span>
-          </SmoothRankingLink>
-        </HomeReveal>
-        <DailyCompetitionDoodles />
-        <Bow className="winner-hero-scene__bow" aria-hidden="true" />
-        <Sparkle className="winner-hero-scene__sparkle" aria-hidden="true" />
+
+        {state === "winner" && winner ? (
+          <>
+            <ImageReveal className="winner-latest__media" delay={0.18}>
+              <FallbackImage
+                src={winner.imageUrl}
+                fallbackSrc={productionAssets.defaultLookPath}
+                alt={`Latest Daily Winner look ${winner.shortCode} for ${formatDailyWinnerDate(winner.dayKey)}.`}
+                fill
+                priority
+                sizes="(max-width: 767px) calc(100vw - 28px), 52vw"
+              />
+            </ImageReveal>
+            <HomeReveal className="winner-latest__copy" delay={0.28}>
+              <DailyWinnerBadge />
+              <span className="winner-latest__day">
+                FINAL · {formatDailyWinnerDate(winner.dayKey).toUpperCase()}
+              </span>
+              <h2>
+                ANONYMOUS LOOK <span>#{winner.shortCode}</span>
+              </h2>
+              {winner.isDebugPlaceholder ? (
+                <small>DEBUG PREVIEW · PRESENTATION ONLY</small>
+              ) : null}
+              <dl className="winner-latest__metrics">
+                <div className="winner-latest__metric--primary">
+                  <dt>FINAL WEIGHTED SCORE</dt>
+                  <dd>{winner.finalWeightedScore.toFixed(3)}</dd>
+                </div>
+                <div>
+                  <dt>AVERAGE RATING</dt>
+                  <dd>{winner.finalAverage.toFixed(2)}</dd>
+                </div>
+                <div>
+                  <dt>FINAL RATINGS</dt>
+                  <dd>{winner.finalRatingCount}</dd>
+                </div>
+              </dl>
+              <Magnetic>
+                <Link
+                  className="winner-editorial-link winner-latest__link"
+                  href={`/daily-winners/${winner.dayKey}`}
+                  data-cursor="VIEW"
+                >
+                  OPEN THE FINAL LOOK <span aria-hidden="true">↗</span>
+                </Link>
+              </Magnetic>
+            </HomeReveal>
+          </>
+        ) : (
+          <div className="winner-latest__open-state">
+            <HomeReveal>
+              <span className="winner-latest__day">
+                COMPLETED DAY ·{" "}
+                {formatDailyWinnerDate(completedDayKey).toUpperCase()}
+              </span>
+              <h2>
+                {state === "error"
+                  ? "THE LATEST SNAPSHOT IS RECONNECTING."
+                  : "NO FINAL DAILY WINNER YET."}
+              </h2>
+              <p>
+                {state === "error"
+                  ? "The stored Daily Winner could not be verified. The active competition remains available below."
+                  : "A completed day can close without an eligible look. The live leader remains provisional until finalization."}
+              </p>
+              <Link
+                className="winner-editorial-link"
+                href="#live-ranking-title"
+              >
+                SEE THE ACTIVE RANKING <span aria-hidden="true">↓</span>
+              </Link>
+            </HomeReveal>
+          </div>
+        )}
+
+        <Sparkle className="winner-latest__sparkle" aria-hidden="true" />
       </div>
     </section>
   );
@@ -54,10 +125,8 @@ export function DailyWinnerHero() {
 export function DailyWinnerArchive({
   winners,
 }: {
-  winners: DailyWinnerSnapshot[];
+  winners: DailyWinnerDisplaySnapshot[];
 }) {
-  if (!winners.length) return null;
-
   return (
     <section className="winner-archive" aria-labelledby="winner-archive-title">
       <div className="winner-container">
@@ -69,35 +138,48 @@ export function DailyWinnerArchive({
             lines={["PAST LOOKS.", "PERMANENT MOMENTS."]}
           />
         </div>
-        <ol className="winner-archive__list">
-          {winners.map((winner, index) => (
-            <li key={winner.id}>
-              <Link href={`/daily-winners/${winner.dayKey}`} data-cursor="VIEW">
-                <span className="winner-archive__index">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <span className="winner-archive__media">
-                  <FallbackImage
-                    src={winner.imageUrl}
-                    fallbackSrc={productionAssets.defaultLookPath}
-                    alt={`Daily Winner look ${winner.shortCode} for ${formatWinnerDay(winner.dayKey)}.`}
-                    fill
-                    sizes="(max-width: 767px) 34vw, 13vw"
-                  />
-                </span>
-                <span className="winner-archive__identity">
-                  <strong>LOOK #{winner.shortCode}</strong>
-                  <small>{formatWinnerDay(winner.dayKey).toUpperCase()}</small>
-                </span>
-                <span className="winner-archive__score">
-                  {winner.finalWeightedScore.toFixed(3)}
-                  <small>FINAL WEIGHTED</small>
-                </span>
-                <span aria-hidden="true">↗</span>
-              </Link>
-            </li>
-          ))}
-        </ol>
+        {winners.length ? (
+          <ol className="winner-archive__list">
+            {winners.map((winner, index) => (
+              <li key={winner.id}>
+                <Link
+                  href={`/daily-winners/${winner.dayKey}`}
+                  data-cursor="VIEW"
+                >
+                  <span className="winner-archive__index">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span className="winner-archive__media">
+                    <FallbackImage
+                      src={winner.imageUrl}
+                      fallbackSrc={productionAssets.defaultLookPath}
+                      alt={`Daily Winner look ${winner.shortCode} for ${formatDailyWinnerDate(winner.dayKey)}.`}
+                      fill
+                      sizes="(max-width: 767px) 34vw, 13vw"
+                    />
+                  </span>
+                  <span className="winner-archive__identity">
+                    <strong>LOOK #{winner.shortCode}</strong>
+                    <small>
+                      {winner.isDebugPlaceholder
+                        ? "DEBUG PLACEHOLDER"
+                        : formatDailyWinnerDate(winner.dayKey).toUpperCase()}
+                    </small>
+                  </span>
+                  <span className="winner-archive__score">
+                    {winner.finalWeightedScore.toFixed(3)}
+                    <small>FINAL WEIGHTED</small>
+                  </span>
+                  <span aria-hidden="true">↗</span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="winner-archive__empty">
+            NO PREVIOUS FINALIZED DAYS YET.
+          </p>
+        )}
       </div>
     </section>
   );

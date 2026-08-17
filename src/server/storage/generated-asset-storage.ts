@@ -10,6 +10,7 @@ export type OutfitStoragePaths = {
   downloadImagePath: string;
   thumbnailPath: string;
   socialImagePath: string;
+  shareImagePath: string;
 };
 
 export interface GeneratedAssetStorage {
@@ -17,6 +18,8 @@ export interface GeneratedAssetStorage {
     outfitId: string,
     bundle: RenderedOutfitBundle,
   ): Promise<OutfitStoragePaths>;
+  read(path: string): Promise<Buffer | null>;
+  upsert(path: string, body: Buffer, contentType: string): Promise<void>;
   delete(paths: string[]): Promise<void>;
   copy(from: string, to: string): Promise<void>;
   listOutfitIds(): Promise<string[]>;
@@ -30,7 +33,14 @@ export function storagePaths(outfitId: string): OutfitStoragePaths {
     downloadImagePath: `${base}/download.png`,
     thumbnailPath: `${base}/thumbnail.webp`,
     socialImagePath: `${base}/social.jpg`,
+    shareImagePath: `${base}/share.png`,
   };
+}
+
+function isMissingObject(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { status?: number; statusCode?: string };
+  return candidate.status === 404 || candidate.statusCode === "404";
 }
 
 let cached: GeneratedAssetStorage | undefined;
@@ -50,6 +60,7 @@ export function getGeneratedAssetStorage(): GeneratedAssetStorage {
         [paths.downloadImagePath, bundle.downloadPng, "image/png"],
         [paths.thumbnailPath, bundle.thumbnailWebp, "image/webp"],
         [paths.socialImagePath, bundle.socialJpeg, "image/jpeg"],
+        [paths.shareImagePath, bundle.sharePng, "image/png"],
       ] as const;
       const uploaded: string[] = [];
       try {
@@ -66,6 +77,22 @@ export function getGeneratedAssetStorage(): GeneratedAssetStorage {
         if (uploaded.length) await bucket.remove(uploaded);
         throw error;
       }
+    },
+    async read(path) {
+      const { data, error } = await bucket.download(path);
+      if (error) {
+        if (isMissingObject(error)) return null;
+        throw error;
+      }
+      return Buffer.from(await data.arrayBuffer());
+    },
+    async upsert(path, body, contentType) {
+      const { error } = await bucket.upload(path, body, {
+        contentType,
+        cacheControl: "3600",
+        upsert: true,
+      });
+      if (error) throw error;
     },
     async delete(paths) {
       if (!paths.length) return;

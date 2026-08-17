@@ -935,6 +935,9 @@
 
 .home-teaser__layer {
   object-fit: contain;
+  --layer-shift-x: 0%;
+  --layer-shift-y: 0%;
+  translate: var(--layer-shift-x) var(--layer-shift-y);
 }
 
 .home-teaser__layer-shell {

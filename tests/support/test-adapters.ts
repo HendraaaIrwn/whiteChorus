@@ -16,6 +16,7 @@ export const deterministicOutfitRenderer: OutfitRenderer = {
       downloadPng: Buffer.from("download-png"),
       thumbnailWebp: Buffer.from("thumbnail-webp"),
       socialJpeg: Buffer.from("social-jpeg"),
+      sharePng: Buffer.from("share-png"),
     };
   },
 };
@@ -32,7 +33,14 @@ export function createMemoryGeneratedAssetStorage(): GeneratedAssetStorage & {
       files.set(paths.downloadImagePath, bundle.downloadPng);
       files.set(paths.thumbnailPath, bundle.thumbnailWebp);
       files.set(paths.socialImagePath, bundle.socialJpeg);
+      files.set(paths.shareImagePath, bundle.sharePng);
       return paths;
+    },
+    async read(path) {
+      return files.get(path) ?? null;
+    },
+    async upsert(path, body) {
+      files.set(path, body);
     },
     async delete(paths) {
       paths.forEach((path) => files.delete(path));

@@ -19,6 +19,7 @@ export type OutfitDetailDTO = OutfitCardDTO & {
   finalImageUrl: string;
   downloadUrl: string;
   socialImageUrl: string;
+  shareImageUrl: string;
   isOwner: boolean;
   canRate: boolean;
   viewerRating: number | null;

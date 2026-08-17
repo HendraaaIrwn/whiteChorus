@@ -25,6 +25,7 @@ enum OutfitInteractionType {
   WHATSAPP
   FACEBOOK
   X
+  INSTAGRAM
   TELEGRAM
   DOWNLOAD
 

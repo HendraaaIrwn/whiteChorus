@@ -1,20 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import {
+  getDailyWinnersOverview,
   getLiveDailyRanking,
-  listDailyWinners,
 } from "@/features/daily-winners/daily-winners";
+import { dailyWinnerQuerySchema } from "@/features/daily-winners/daily-winner-query";
 import { errorResponse, requestId } from "@/server/http/route-response";
 
 export async function GET(request: NextRequest) {
   const id = requestId(request);
   try {
-    const [winners, ranking] = await Promise.all([
-      listDailyWinners().catch(() => []),
-      getLiveDailyRanking(),
+    const now = new Date();
+    const url = new URL(request.url);
+    const query = dailyWinnerQuerySchema.parse({
+      page: url.searchParams.get("page") ?? undefined,
+    });
+    const [overview, ranking] = await Promise.all([
+      getDailyWinnersOverview(now).catch(() => ({
+        latestWinner: null,
+        completedDays: [],
+      })),
+      getLiveDailyRanking({ now, page: query.page }),
     ]);
     return NextResponse.json(
-      { ok: true, data: { winners, ranking } },
+      { ok: true, data: { ...overview, ranking } },
       {
         headers: {
           "cache-control": "no-store",
