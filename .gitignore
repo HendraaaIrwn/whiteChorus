@@ -45,3 +45,10 @@ next-env.d.ts
 
 # generated Prisma client
 /src/generated/prisma
+
+# AI coding tool local/generated data
+.serena/
+graphify-out/
+
+# OpenCode
+.opencode/
