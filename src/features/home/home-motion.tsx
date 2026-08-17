@@ -20,6 +20,7 @@ export function MaskedHeading({
   level = "h2",
   intro = false,
   skipAnimation = false,
+  tabIndex,
 }: {
   id?: string;
   lines: string[];
@@ -27,6 +28,7 @@ export function MaskedHeading({
   level?: "h1" | "h2";
   intro?: boolean;
   skipAnimation?: boolean;
+  tabIndex?: number;
 }) {
   const reduceMotion = useHydratedReducedMotion();
   const Tag = level === "h1" ? motion.h1 : motion.h2;
@@ -53,6 +55,7 @@ export function MaskedHeading({
     <Tag
       id={id}
       className={className}
+      tabIndex={tabIndex}
       variants={group}
       initial={reduceMotion || skipAnimation ? false : "hidden"}
       animate={intro && !skipAnimation ? "visible" : undefined}

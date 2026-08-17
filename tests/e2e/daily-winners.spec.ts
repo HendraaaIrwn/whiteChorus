@@ -73,7 +73,7 @@ async function installStableRanking(page: Page) {
   await page.route("**/api/daily-winners", (route) => fulfillRanking(route));
 }
 
-test("separates the finalized spotlight from the live provisional race", async ({
+test("separates Daily Competition from the live provisional race", async ({
   page,
 }, testInfo) => {
   test.skip(
@@ -82,21 +82,58 @@ test("separates the finalized spotlight from the live provisional race", async (
   );
   await installStableRanking(page);
   await page.goto("/daily-winners");
+  const visiblePage = page.locator(".winner-page:visible");
 
   await expect(
-    page.getByRole("heading", { level: 1, name: "DAILY WINNER" }),
+    visiblePage.getByRole("heading", { level: 1, name: "DAILY WINNER" }),
   ).toBeVisible();
-  await expect(page.getByText("02 · FINAL SPOTLIGHT")).toBeVisible();
+  await expect(page.locator(".winner-stage")).toHaveCount(0);
+  await expect(page.getByText("FINAL", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("PROVISIONAL", { exact: true })).toHaveCount(0);
+  await expect(visiblePage.getByText("02 · CURRENT COMPETITION")).toBeVisible();
   await expect(
-    page.getByRole("heading", { level: 2, name: "LIVE RANKING" }),
+    visiblePage.getByRole("heading", { level: 2, name: "LIVE RANKING" }),
   ).toBeVisible();
-  await expect(page.getByText("LIVE · PROVISIONAL")).toBeVisible();
-  await expect(page.locator(".site-header--winners")).toBeVisible();
-  await expect(page.locator(".site-footer--winners")).toBeVisible();
+  await expect(visiblePage.getByText("LIVE · PROVISIONAL")).toBeVisible();
+  await expect(page.locator(".site-header--winners:visible")).toBeVisible();
+  await expect(page.locator(".site-footer--winners:visible")).toBeVisible();
+  await expect(visiblePage.locator(".winner-hero-scene__doodle")).toHaveCount(
+    3,
+  );
 
-  const liveLeader = page.locator(".live-ranking__item").first();
+  const sectionSurfaces = await page.evaluate(() => ({
+    competition: getComputedStyle(
+      document.querySelector<HTMLElement>(".winner-hero-scene")!,
+    ).backgroundColor,
+    ranking: getComputedStyle(
+      document.querySelector<HTMLElement>(".live-ranking")!,
+    ).backgroundColor,
+  }));
+  expect(sectionSurfaces.competition).toBe("rgb(65, 88, 134)");
+  expect(sectionSurfaces.ranking).toBe("rgb(253, 246, 236)");
+
+  const archive = visiblePage.locator(".winner-archive");
+  if (await archive.count()) {
+    await expect(archive.getByText("03 · COMPLETED DAYS")).toBeVisible();
+    await expect(archive.locator(".winner-archive__index").first()).toHaveText(
+      "01",
+    );
+  }
+  await expect(visiblePage.locator(".winner-cta .winner-label")).toHaveText(
+    /^(03|04) · YOUR NEXT LOOK$/,
+  );
+  await expect(visiblePage.locator(".winner-cta__layout > svg")).toHaveCount(1);
+  await expect(visiblePage.locator(".winner-cta__spark")).toHaveCount(1);
+
+  const liveLeader = visiblePage.locator(".live-ranking__item").first();
   await expect(liveLeader.getByText("CURRENT LEADER")).toBeVisible();
   await expect(liveLeader).not.toContainText("WINNER");
+  const leaderDetailHref = await liveLeader
+    .locator(".live-ranking__link")
+    .getAttribute("href");
+  const leaderDetailUrl = new URL(leaderDetailHref!, "http://localhost");
+  expect(leaderDetailUrl.searchParams.get("from")).toBe("daily-winner");
+  expect(leaderDetailUrl.searchParams.get("returnTo")).toBe("/daily-winners");
   await expect(
     liveLeader.locator("dd").getByText("4.620", { exact: true }),
   ).toBeVisible();
@@ -108,14 +145,160 @@ test("separates the finalized spotlight from the live provisional race", async (
   ).toBeVisible();
   await expect(liveLeader.getByText("ELIGIBLE", { exact: true })).toBeVisible();
 
-  const second = page.locator(".live-ranking__item").nth(1);
+  const second = visiblePage.locator(".live-ranking__item").nth(1);
   await expect(second.locator(".live-ranking__eligibility")).toHaveText(
     "NEEDS 1 MORE RATING",
   );
   await expect(second).not.toContainText("0 RATINGS");
 
-  await page.getByText("HOW THE RANKING WORKS").click();
-  await expect(page.getByText(/Eligibility begins at 5 ratings/)).toBeVisible();
+  await visiblePage.getByText("HOW THE RANKING WORKS").click();
+  await expect(
+    visiblePage.getByText(/Eligibility begins at 5 ratings/),
+  ).toBeVisible();
+});
+
+test("smoothly positions the live ranking below the sticky header", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "Anchor motion and sticky-header geometry are covered once in Chromium.",
+  );
+  await installStableRanking(page);
+  for (const viewport of [
+    { width: 1280, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/daily-winners");
+
+    await page.getByRole("link", { name: /FOLLOW THE LIVE RANKING/ }).click();
+    await expect(page).toHaveURL(/#live-ranking-title$/);
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const header = Array.from(
+            document.querySelectorAll<HTMLElement>(".site-header--winners"),
+          ).find((element) => element.getClientRects().length)!;
+          const title = Array.from(
+            document.querySelectorAll<HTMLElement>("#live-ranking-title"),
+          ).find(
+            (element) =>
+              element.closest<HTMLElement>(".winner-page")?.getClientRects()
+                .length,
+          )!;
+          return Math.round(
+            title.getBoundingClientRect().top -
+              header.getBoundingClientRect().bottom,
+          );
+        }),
+      )
+      .toBeGreaterThanOrEqual(20);
+    await expect(
+      page.locator(".winner-page:visible #live-ranking-title"),
+    ).toBeFocused();
+  }
+});
+
+test("uses the homepage footer bottom design and motion system", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "chromium",
+    "Footer motion parity is covered once in Chromium.",
+  );
+  await installStableRanking(page);
+  await page.goto("/daily-winners");
+
+  const footer = page.locator(".site-footer--winners:visible");
+  await expect(footer).toHaveAttribute("data-footer-motion", "enabled");
+  await footer.scrollIntoViewIfNeeded();
+  await expect(footer.getByText("THE RACE CONTINUES")).toBeVisible();
+  await expect(footer.getByRole("link", { name: "HOME" })).toBeVisible();
+  await expect(footer.getByRole("link", { name: "DRESS UP" })).toBeVisible();
+  await expect(
+    footer.getByRole("link", { name: "HALL OF FAME" }),
+  ).toBeVisible();
+  await expect(footer.getByText("ANONYMOUS BY DESIGN.")).toHaveCount(0);
+  await expect(footer.getByText("WHITE CHORUS © 2026")).toBeVisible();
+  await expect(footer.locator("[data-footer-title-reveal]")).toBeVisible();
+  await expect(footer.locator("[data-footer-wave-reveal]")).toHaveCount(1);
+  await expect(footer.locator("[data-footer-spark-reveal]")).toHaveCount(1);
+
+  const readBottomContract = async (footerSelector: string) =>
+    page.locator(footerSelector).evaluate((element) => {
+      const nav = element.querySelector<HTMLElement>(".editorial-footer__nav")!;
+      const link = nav.querySelector<HTMLElement>("a")!;
+      const meta = element.querySelector<HTMLElement>(
+        ".editorial-footer__meta",
+      )!;
+      const music = meta.querySelector<HTMLElement>(".music-control")!;
+      const linkStyle = getComputedStyle(link);
+      const underlineStyle = getComputedStyle(link, "::after");
+      const metaStyle = getComputedStyle(meta);
+      const musicStyle = getComputedStyle(music);
+      const navStyle = getComputedStyle(nav);
+
+      return {
+        link: {
+          fontSize: linkStyle.fontSize,
+          fontWeight: linkStyle.fontWeight,
+          letterSpacing: linkStyle.letterSpacing,
+          minHeight: linkStyle.minHeight,
+        },
+        meta: {
+          alignItems: metaStyle.alignItems,
+          display: metaStyle.display,
+          fontSize: metaStyle.fontSize,
+          fontWeight: metaStyle.fontWeight,
+          gap: metaStyle.gap,
+          justifyContent: metaStyle.justifyContent,
+          letterSpacing: metaStyle.letterSpacing,
+        },
+        music: {
+          borderRadius: musicStyle.borderRadius,
+          borderWidth: musicStyle.borderWidth,
+          minHeight: musicStyle.minHeight,
+          padding: musicStyle.padding,
+          transition: musicStyle.transition,
+        },
+        nav: {
+          display: navStyle.display,
+          gap: navStyle.gap,
+          gridColumn: navStyle.gridColumn,
+        },
+        underline: {
+          bottom: underlineStyle.bottom,
+          height: underlineStyle.height,
+          transition: underlineStyle.transition,
+        },
+      };
+    });
+
+  const winnerBottomContract = await readBottomContract(
+    ".site-footer--winners:visible",
+  );
+  const waveGeometry = await footer
+    .locator(".winner-editorial-footer > svg")
+    .evaluate((wave) => {
+      const bounds = wave.getBoundingClientRect();
+
+      return {
+        right: bounds.right,
+        strokeWidth: Number.parseFloat(getComputedStyle(wave).strokeWidth),
+        viewportWidth: window.innerWidth,
+      };
+    });
+  expect(waveGeometry.strokeWidth).toBeGreaterThanOrEqual(6);
+  expect(waveGeometry.right).toBeGreaterThanOrEqual(waveGeometry.viewportWidth);
+
+  await page.goto("/");
+  const homeFooter = page.locator(".site-footer--home:visible");
+  await homeFooter.scrollIntoViewIfNeeded();
+  await expect(homeFooter).toBeVisible();
+  await expect(winnerBottomContract).toEqual(
+    await readBottomContract(".site-footer--home:visible"),
+  );
 });
 
 test("animates only actual ranking and eligibility changes from the API", async ({
@@ -160,9 +343,10 @@ test("marks the last verified ranking when a refresh fails", async ({
     "Recovery state is covered once in desktop Chromium.",
   );
   let requestCount = 0;
+  let failRefresh = false;
   await page.route("**/api/daily-winners", async (route) => {
     requestCount += 1;
-    if (requestCount === 1) return fulfillRanking(route);
+    if (!failRefresh) return fulfillRanking(route);
     await route.fulfill({
       status: 503,
       contentType: "application/json",
@@ -170,13 +354,18 @@ test("marks the last verified ranking when a refresh fails", async ({
     });
   });
   await page.goto("/daily-winners");
-  await expect(page.getByText("UPDATED", { exact: true })).toBeVisible();
+  const visiblePage = page.locator(".winner-page:visible");
+  await expect(visiblePage.getByText("UPDATED", { exact: true })).toBeVisible();
+  await expect.poll(() => requestCount).toBeGreaterThan(0);
 
+  failRefresh = true;
   await page.evaluate(() =>
     document.dispatchEvent(new Event("visibilitychange")),
   );
-  await expect(page.getByText("LAST VERIFIED", { exact: true })).toBeVisible();
-  await expect(page.getByText("Reconnect pending")).toBeVisible();
+  await expect(
+    visiblePage.getByText("LAST VERIFIED", { exact: true }),
+  ).toBeVisible();
+  await expect(visiblePage.getByText("Reconnect pending")).toBeVisible();
 });
 
 test("keeps the editorial ranking readable at every acceptance width", async ({
@@ -198,13 +387,25 @@ test("keeps the editorial ranking readable at every acceptance width", async ({
       `${viewport.width}px Daily Winner must not overflow horizontally`,
     ).toBe(true);
 
+    const visibleDoodleCount = await page
+      .locator(".winner-page:visible .winner-hero-scene__doodle")
+      .evaluateAll(
+        (doodles) =>
+          doodles.filter(
+            (doodle) => getComputedStyle(doodle).display !== "none",
+          ).length,
+      );
+    expect(visibleDoodleCount).toBe(
+      viewport.width >= 1200 ? 3 : viewport.width >= 768 ? 2 : 1,
+    );
+
     const eligibilityHeight = await page
       .locator(".live-ranking__eligibility")
       .first()
       .evaluate((element) => element.getBoundingClientRect().height);
     expect(eligibilityHeight).toBeGreaterThanOrEqual(44);
 
-    const cta = page.locator(".winner-cta__action");
+    const cta = page.locator(".winner-page:visible .winner-cta__action");
     const ctaSize = await cta.evaluate((element) => ({
       clientWidth: element.clientWidth,
       scrollWidth: element.scrollWidth,
@@ -214,7 +415,9 @@ test("keeps the editorial ranking readable at every acceptance width", async ({
     expect(ctaSize.height).toBeGreaterThanOrEqual(44);
 
     if (viewport.width < 768) {
-      await expect(page.locator(".winner-cursor")).toBeHidden();
+      await expect(
+        page.locator(".winner-page:visible > .winner-cursor"),
+      ).toBeHidden();
       const metricsColumns = await page
         .locator(".live-ranking__metrics")
         .first()
@@ -234,14 +437,22 @@ test("uses VIEW, OPEN, and DRESS cursor contexts on fine pointers", async ({
   await installStableRanking(page);
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/daily-winners");
-  const cursor = page.locator(".winner-cursor");
+  const cursor = page.locator(".winner-page:visible > .winner-cursor");
 
-  await page.locator(".live-ranking__image").first().hover();
+  await page.locator(".live-ranking__link").first().hover();
   await expect(cursor).toHaveAttribute("data-label", "VIEW");
-  await page.getByText("HOW THE RANKING WORKS").hover();
+  await page
+    .locator(".winner-page:visible")
+    .getByText("HOW THE RANKING WORKS")
+    .hover();
   await expect(cursor).toHaveAttribute("data-label", "OPEN");
-  await page.locator(".winner-cta__action").hover();
+  await page.locator(".winner-page:visible .winner-cta__action").hover();
   await expect(cursor).toHaveAttribute("data-label", "DRESS");
+  await expect(
+    page.locator(
+      ".winner-page:visible .winner-cta__action .entry-audio-gate__hover",
+    ),
+  ).toHaveCSS("background-color", "rgb(254, 187, 117)");
 });
 
 test("keeps live data static and the native cursor under reduced motion", async ({
@@ -254,13 +465,24 @@ test("keeps live data static and the native cursor under reduced motion", async 
   await installStableRanking(page);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/daily-winners");
-  await expect(page.locator(".winner-cursor")).toBeHidden();
+  await expect(
+    page.locator(".winner-page:visible > .winner-cursor"),
+  ).toBeHidden();
   await expect(page.locator("html")).not.toHaveClass(
     /winner-custom-cursor-ready/,
   );
   await expect(page.locator(".live-ranking__item").first()).toContainText(
     "LIVEA001",
   );
+  await page.getByRole("link", { name: /FOLLOW THE LIVE RANKING/ }).click();
+  await expect(page).toHaveURL(/#live-ranking-title$/);
+  await expect(
+    page.locator(".winner-page:visible #live-ranking-title"),
+  ).toBeFocused();
+
+  const footer = page.locator(".site-footer--winners:visible");
+  await footer.scrollIntoViewIfNeeded();
+  await expect(footer.locator("[data-footer-title-reveal]")).toBeVisible();
 });
 
 test("keeps native touch behavior and readable ranking metrics on mobile", async ({
@@ -275,7 +497,9 @@ test("keeps native touch behavior and readable ranking metrics on mobile", async
   await expect(page.locator("html")).not.toHaveClass(
     /winner-custom-cursor-ready/,
   );
-  await expect(page.locator(".winner-cursor")).toBeHidden();
+  await expect(
+    page.locator(".winner-page:visible > .winner-cursor"),
+  ).toBeHidden();
   await expect(page.locator(".live-ranking__metrics").first()).toBeVisible();
   await expect(page.locator(".live-ranking__eligibility").first()).toHaveText(
     "ELIGIBLE",
@@ -291,7 +515,8 @@ test("opens the existing audio choice from the final Dress-Up CTA", async ({
   );
   await installStableRanking(page);
   await page.goto("/daily-winners");
-  await page.locator(".winner-cta__action").click();
+  const cta = page.locator(".winner-page:visible .winner-cta__action");
+  await cta.click();
   await expect(
     page.getByRole("heading", { name: "HOW SHOULD THE CHORUS BEGIN?" }),
   ).toBeVisible();
@@ -302,5 +527,5 @@ test("opens the existing audio choice from the final Dress-Up CTA", async ({
     page.getByRole("button", { name: "ENTER SILENTLY" }),
   ).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.locator(".winner-cta__action")).toBeFocused();
+  await expect(cta).toBeFocused();
 });

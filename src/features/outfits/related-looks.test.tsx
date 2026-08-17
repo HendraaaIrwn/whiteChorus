@@ -4,12 +4,21 @@ import { describe, expect, it, vi } from "vitest";
 import type { OutfitCardDTO } from "@/features/outfits/outfit.types";
 
 vi.mock("@/features/hall-of-fame/hall-look-card", () => ({
-  HallLookCard: ({ outfit }: { outfit: OutfitCardDTO }) => (
-    <article data-outfit-id={outfit.id} />
-  ),
+  HallLookCard: ({
+    detailHref,
+    outfit,
+  }: {
+    detailHref: string;
+    outfit: OutfitCardDTO;
+  }) => <article data-detail-href={detailHref} data-outfit-id={outfit.id} />,
 }));
 
 import { RelatedLooks } from "@/features/outfits/related-looks";
+
+const navigationContext = {
+  origin: "daily-winner",
+  returnTo: "/daily-winners",
+} as const;
 
 function makeOutfit(index: number): OutfitCardDTO {
   return {
@@ -27,18 +36,25 @@ function makeOutfit(index: number): OutfitCardDTO {
 
 describe("RelatedLooks", () => {
   it("omits the section when no active related looks are available", () => {
-    expect(renderToStaticMarkup(<RelatedLooks outfits={[]} />)).toBe("");
+    expect(
+      renderToStaticMarkup(
+        <RelatedLooks navigationContext={navigationContext} outfits={[]} />,
+      ),
+    ).toBe("");
   });
 
-  it("renders no more than three real looks and matches the visible count", () => {
+  it("renders no more than four real looks and preserves navigation context", () => {
     const html = renderToStaticMarkup(
       <RelatedLooks
-        outfits={Array.from({ length: 4 }, (_, index) => makeOutfit(index))}
+        navigationContext={navigationContext}
+        outfits={Array.from({ length: 5 }, (_, index) => makeOutfit(index))}
       />,
     );
 
-    expect(html.match(/data-outfit-id=/g)).toHaveLength(3);
-    expect(html).toContain("3 more voices from the Hall.");
-    expect(html).not.toContain("outfit-3");
+    expect(html.match(/data-outfit-id=/g)).toHaveLength(4);
+    expect(html).toContain("4 more voices from the Hall.");
+    expect(html).toContain("from=daily-winner");
+    expect(html).toContain("returnTo=%2Fdaily-winners");
+    expect(html).not.toContain("outfit-4");
   });
 });

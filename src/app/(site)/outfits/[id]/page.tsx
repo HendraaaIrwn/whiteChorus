@@ -10,6 +10,7 @@ import { getRelatedOutfits } from "@/features/hall-of-fame/hall-of-fame";
 import { CustomCursor } from "@/features/home/home-motion";
 import { getOutfitDetail } from "@/features/outfits/get-outfit-detail";
 import { LookDetail } from "@/features/outfits/look-detail";
+import { resolveLookDetailNavigation } from "@/features/outfits/look-detail-navigation";
 import { RelatedLooks } from "@/features/outfits/related-looks";
 import { DomainError } from "@/server/http/domain-error";
 
@@ -46,10 +47,16 @@ export async function generateMetadata({
 
 export default async function OutfitPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const id = (await params).id;
+  const [{ id }, requestedNavigation] = await Promise.all([
+    params,
+    searchParams,
+  ]);
+  const navigation = resolveLookDetailNavigation(requestedNavigation);
   let outfit;
   try {
     outfit = await load(id);
@@ -97,8 +104,13 @@ export default async function OutfitPage({
   return (
     <div className="hall-page look-detail-page" data-look-detail-page>
       <CustomCursor scope="hall" />
-      <LookDetail outfit={outfit} shareUrl={shareUrl} />
-      <RelatedLooks outfits={related} />
+      <LookDetail
+        backHref={navigation.returnTo}
+        backLabel={navigation.backLabel}
+        outfit={outfit}
+        shareUrl={shareUrl}
+      />
+      <RelatedLooks navigationContext={navigation} outfits={related} />
     </div>
   );
 }

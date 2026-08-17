@@ -1,22 +1,27 @@
-import { FallbackImage } from "@/components/ui/fallback-image";
-import { productionAssets } from "@/features/dress-up/catalog";
-import { Sparkle, ThreadStroke } from "@/features/home/home-doodles";
-import {
-  HomeReveal,
-  ImageReveal,
-  MaskedHeading,
-} from "@/features/home/home-motion";
-import type { HallOutfitCardDTO } from "@/features/outfits/outfit.types";
+"use client";
 
-export function HallOfFameHero({
-  firstLook,
-  totalItems,
-}: {
-  firstLook?: HallOutfitCardDTO;
-  totalItems: number;
-}) {
+import { motion, useInView } from "framer-motion";
+import { useRef } from "react";
+
+import { useHydratedReducedMotion } from "@/components/motion/use-hydrated-reduced-motion";
+import {
+  chorusWavePath,
+  Sparkle,
+  ThreadStroke,
+} from "@/features/home/home-doodles";
+import { MaskedHeading } from "@/features/home/home-motion";
+
+export function HallOfFameHero() {
+  const heroRef = useRef<HTMLElement>(null);
+  const reduceMotion = useHydratedReducedMotion();
+  const heroInView = useInView(heroRef, { once: true, amount: 0.3 });
+
   return (
-    <section className="hall-hero" aria-labelledby="hall-hero-title">
+    <section
+      ref={heroRef}
+      className="hall-hero"
+      aria-labelledby="hall-hero-title"
+    >
       <div className="hall-container hall-grid-system hall-hero__composition">
         <span className="hall-label hall-hero__label">
           01 · COMMUNITY EXHIBITION
@@ -26,37 +31,55 @@ export function HallOfFameHero({
           id="hall-hero-title"
           className="hall-hero__title"
           level="h1"
-          lines={["HALL", "OF", "FAME"]}
+          lines={["HALL OF", "FAME"]}
           intro
         />
 
-        <HomeReveal className="hall-hero__copy" delay={0.24}>
-          <p>Fresh looks live for seven days. Stars decide who rises.</p>
-          <span>
-            {String(totalItems).padStart(2, "0")}{" "}
-            {totalItems === 1 ? "LOOK" : "LOOKS"} ON VIEW
-          </span>
-        </HomeReveal>
+        <MaskedHeading
+          id="hall-hero-statement"
+          className="hall-hero__statement"
+          level="h2"
+          lines={["ONE LOOK.", "ONE MOMENT.", "ONE SHARED WALL."]}
+        />
 
-        <ImageReveal className="hall-hero__look" delay={0.38}>
-          <FallbackImage
-            src={firstLook?.thumbnailUrl}
-            fallbackSrc={productionAssets.defaultLookPath}
-            alt={
-              firstLook
-                ? `Anonymous White Chorus outfit ${firstLook.shortCode}.`
-                : "Emir and Friska in a White Chorus look."
-            }
-            fill
-            priority
-            sizes="(max-width: 767px) 44vw, 28vw"
-          />
-          <span aria-hidden="true">FROM THE CHORUS</span>
-        </ImageReveal>
-
-        <ThreadStroke className="hall-hero__thread" aria-hidden="true" />
+        <ThreadStroke
+          className="hall-hero__thread"
+          aria-hidden="true"
+          withArrow={false}
+        />
         <Sparkle className="hall-hero__sparkle" aria-hidden="true" />
-        <span className="hall-hero__edition">DAILY EDITION · 2026</span>
+        <svg
+          className="hall-hero__wave"
+          viewBox="0 0 1000 240"
+          fill="none"
+          aria-hidden="true"
+        >
+          <defs>
+            <clipPath id="hall-hero-wave-reveal" clipPathUnits="userSpaceOnUse">
+              <motion.rect
+                x="0"
+                y="-24"
+                height="288"
+                initial={reduceMotion ? false : { width: 0 }}
+                animate={{
+                  width: reduceMotion || heroInView ? 1000 : 0,
+                }}
+                transition={{
+                  duration: reduceMotion ? 0 : 2.25,
+                  delay: reduceMotion ? 0 : 0.18,
+                  ease: [0.65, 0, 0.35, 1],
+                }}
+              />
+            </clipPath>
+          </defs>
+          <path
+            d={chorusWavePath}
+            clipPath="url(#hall-hero-wave-reveal)"
+            stroke="currentColor"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
       </div>
     </section>
   );

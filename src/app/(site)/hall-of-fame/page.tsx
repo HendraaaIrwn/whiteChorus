@@ -4,8 +4,6 @@ import { Suspense } from "react";
 
 import { getServerEnv } from "@/config/env";
 import { findGuest } from "@/features/guest-session/guest-session";
-import { DailySpotlight } from "@/features/hall-of-fame/daily-spotlight";
-import { getHallDailySpotlight } from "@/features/hall-of-fame/hall-daily-spotlight";
 import { HallCollection } from "@/features/hall-of-fame/hall-collection";
 import { HallOfFameCta } from "@/features/hall-of-fame/hall-of-fame-cta";
 import { HallOfFameHero } from "@/features/hall-of-fame/hall-of-fame-hero";
@@ -34,19 +32,12 @@ async function HallOfFameContent({
   query: HallQuery;
 }) {
   const guest = await findGuest(guestToken);
-  const [hall, spotlight] = await Promise.all([
-    getHallOfFamePage(query, guest?.id),
-    getHallDailySpotlight(),
-  ]);
+  const hall = await getHallOfFamePage(query, guest?.id);
 
   return (
     <div className="hall-page" data-hall-page>
       <CustomCursor scope="hall" />
-      <HallOfFameHero
-        firstLook={hall.items[0]}
-        totalItems={hall.pagination.totalItems}
-      />
-      <DailySpotlight state={spotlight} />
+      <HallOfFameHero />
       <HallCollection
         activeSort={query.sort}
         items={hall.items}
@@ -68,7 +59,7 @@ export default async function HallOfFamePage({
   const guestToken = cookieStore.get(getServerEnv().SESSION_COOKIE_NAME)?.value;
 
   return (
-    <Suspense key={`${query.sort}:${query.page}`} fallback={<HallLoading />}>
+    <Suspense fallback={<HallLoading />}>
       <HallOfFameContent guestToken={guestToken} query={query} />
     </Suspense>
   );

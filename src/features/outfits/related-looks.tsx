@@ -1,10 +1,19 @@
 import { HallLookCard } from "@/features/hall-of-fame/hall-look-card";
-import { getRelatedLookLayout } from "@/features/hall-of-fame/layout-pattern";
+import {
+  buildLookDetailHref,
+  type LookDetailNavigationContext,
+} from "@/features/outfits/look-detail-navigation";
 import type { OutfitCardDTO } from "@/features/outfits/outfit.types";
 
-export function RelatedLooks({ outfits }: { outfits: OutfitCardDTO[] }) {
+export function RelatedLooks({
+  navigationContext,
+  outfits,
+}: {
+  navigationContext: LookDetailNavigationContext;
+  outfits: OutfitCardDTO[];
+}) {
   if (!outfits.length) return null;
-  const visibleOutfits = outfits.slice(0, 3);
+  const visibleOutfits = outfits.slice(0, 4);
   const relatedCopy =
     visibleOutfits.length === 1
       ? "One more voice from the Hall."
@@ -25,19 +34,18 @@ export function RelatedLooks({ outfits }: { outfits: OutfitCardDTO[] }) {
           <p>{relatedCopy}</p>
         </header>
         <div className="look-detail__related-grid">
-          {visibleOutfits.map((outfit, index) => {
-            const layout = getRelatedLookLayout(index);
-            return (
-              <HallLookCard
-                key={outfit.id}
-                index={index}
-                outfit={outfit}
-                ratingMode="summary"
-                tone={layout.tone}
-                variant={layout.variant}
-              />
-            );
-          })}
+          {visibleOutfits.map((outfit, index) => (
+            <HallLookCard
+              key={outfit.id}
+              detailHref={buildLookDetailHref(outfit.id, navigationContext)}
+              imageSizes="(max-width: 767px) calc(100vw - 32px), (max-width: 1199px) calc(50vw - 36px), (max-width: 1600px) calc(25vw - 36px), 368px"
+              index={index}
+              outfit={outfit}
+              ratingMode="summary"
+              tone="soft"
+              variant="grid"
+            />
+          ))}
         </div>
       </div>
     </section>

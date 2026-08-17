@@ -31,16 +31,16 @@ The interface must not look like a SaaS dashboard, e-commerce catalog, or conven
 
 The Comotion language should map to White Chorus as follows:
 
-| Comotion pattern | White Chorus interpretation |
-|---|---|
-| Editorial hero | Character + outfit composition becomes the hero artwork |
-| Work/project cards | Outfit collections / Hall of Fame submissions |
+| Comotion pattern     | White Chorus interpretation                                           |
+| -------------------- | --------------------------------------------------------------------- |
+| Editorial hero       | Character + outfit composition becomes the hero artwork               |
+| Work/project cards   | Outfit collections / Hall of Fame submissions                         |
 | Organic illustration | Fashion silhouettes, ribbons, threads, stars, scribbles, fabric waves |
-| Service bento | Wardrobe category selector / dress-up controls |
-| Full-screen menu | Full-screen White Chorus navigation scene |
-| Project hover | Outfit / submission preview reaction |
-| Large CTA sections | Save Look / Enter Hall of Fame / Start Dressing |
-| Decorative doodles | Thread strokes, bows, hearts, sparkles, stitches, music marks |
+| Service bento        | Wardrobe category selector / dress-up controls                        |
+| Full-screen menu     | Full-screen White Chorus navigation scene                             |
+| Project hover        | Outfit / submission preview reaction                                  |
+| Large CTA sections   | Save Look / Enter Hall of Fame / Start Dressing                       |
+| Decorative doodles   | Thread strokes, bows, hearts, sparkles, stitches, music marks         |
 
 ### 1.2 Hard rules
 
@@ -68,31 +68,31 @@ Use this palette as the single source of truth.
 ```css
 :root {
   /* Background */
-  --color-background: #FDF6EC;
-  --color-background-secondary: #FCEFDF;
-  --color-surface: #FDFAF9;
+  --color-background: #fdf6ec;
+  --color-background-secondary: #fcefdf;
+  --color-surface: #fdfaf9;
 
   /* Text */
   --color-text-primary: #324271;
-  --color-text-secondary: #6F7E9A;
-  --color-text-dark: #2C2E34;
+  --color-text-secondary: #6f7e9a;
+  --color-text-dark: #2c2e34;
 
   /* Brand */
-  --color-primary: #6F7E9A;
+  --color-primary: #6f7e9a;
   --color-primary-dark: #415886;
 
   /* Secondary */
-  --color-secondary: #7CBFBD;
-  --color-secondary-light: #B0E4E9;
+  --color-secondary: #7cbfbd;
+  --color-secondary-light: #b0e4e9;
 
   /* Accent */
-  --color-accent: #FEBB75;
-  --color-accent-dark: #BF6553;
-  --color-pink: #DFBFC6;
+  --color-accent: #febb75;
+  --color-accent-dark: #bf6553;
+  --color-pink: #dfbfc6;
 
   /* Neutral */
-  --color-muted: #B2BAC9;
-  --color-border: #72727D;
+  --color-muted: #b2bac9;
+  --color-border: #72727d;
 }
 ```
 
@@ -202,8 +202,8 @@ Body text should remain highly readable and restrained.
 ```css
 :root {
   --text-xs: clamp(0.72rem, 0.69rem + 0.12vw, 0.82rem);
-  --text-sm: clamp(0.84rem, 0.80rem + 0.16vw, 0.95rem);
-  --text-base: clamp(0.98rem, 0.93rem + 0.20vw, 1.12rem);
+  --text-sm: clamp(0.84rem, 0.8rem + 0.16vw, 0.95rem);
+  --text-base: clamp(0.98rem, 0.93rem + 0.2vw, 1.12rem);
   --text-lg: clamp(1.15rem, 1.05rem + 0.42vw, 1.42rem);
   --text-xl: clamp(1.45rem, 1.25rem + 0.85vw, 2rem);
   --text-2xl: clamp(2rem, 1.55rem + 1.8vw, 3.25rem);
@@ -512,7 +512,7 @@ Default cards should depend on contrast, borders, scale, and motion rather than 
 Allowed floating shadow:
 
 ```css
-box-shadow: 0 18px 50px rgb(44 46 52 / 0.10);
+box-shadow: 0 18px 50px rgb(44 46 52 / 0.1);
 ```
 
 ---
@@ -1370,7 +1370,9 @@ Visible focus states are mandatory.
     scroll-behavior: auto;
   }
 
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -1459,18 +1461,18 @@ Use Motion only if it already exists in the project and is useful for React-loca
 
 Suggested ownership:
 
-| Need | Tool |
-|---|---|
-| Hero choreography | GSAP timeline |
-| Scroll-triggered scenes | GSAP ScrollTrigger |
-| Smooth scrolling | Lenis |
-| Menu scene | GSAP timeline |
-| SVG line drawing | GSAP or CSS |
-| Button hover | CSS first |
-| Outfit swap | CSS / Motion |
-| Layout transition | Motion if already installed |
-| Pointer parallax | requestAnimationFrame / GSAP quickTo |
-| Custom cursor | requestAnimationFrame / GSAP quickTo |
+| Need                    | Tool                                 |
+| ----------------------- | ------------------------------------ |
+| Hero choreography       | GSAP timeline                        |
+| Scroll-triggered scenes | GSAP ScrollTrigger                   |
+| Smooth scrolling        | Lenis                                |
+| Menu scene              | GSAP timeline                        |
+| SVG line drawing        | GSAP or CSS                          |
+| Button hover            | CSS first                            |
+| Outfit swap             | CSS / Motion                         |
+| Layout transition       | Motion if already installed          |
+| Pointer parallax        | requestAnimationFrame / GSAP quickTo |
+| Custom cursor           | requestAnimationFrame / GSAP quickTo |
 
 ---
 

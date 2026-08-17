@@ -10,7 +10,6 @@ import {
   DailyWinnerArchive,
   DailyWinnerCta,
   DailyWinnerHero,
-  DailyWinnerStage,
 } from "@/features/daily-winners/daily-winner-scenes";
 import { LiveDailyRanking } from "@/features/daily-winners/live-daily-ranking";
 import { CustomCursor } from "@/features/home/home-motion";
@@ -34,35 +33,21 @@ export default async function DailyWinnersPage() {
   ]);
   const winners =
     winnersResult.status === "fulfilled" ? winnersResult.value : [];
-  const latestWinner =
-    winners.find((winner) => winner.dayKey === completedDayKey) ?? null;
-  const previousWinners = winners.filter(
-    (winner) =>
-      winner.id !== latestWinner?.id && winner.dayKey < completedDayKey,
+  const completedWinners = winners.filter(
+    (winner) => winner.dayKey <= completedDayKey,
   );
-  const winnerState =
-    winnersResult.status === "rejected"
-      ? "error"
-      : latestWinner
-        ? "winner"
-        : "empty";
 
   return (
     <div className="winner-page" data-winner-page>
       <CustomCursor scope="winner" />
       <DailyWinnerHero />
-      <DailyWinnerStage
-        completedDayKey={completedDayKey}
-        state={winnerState}
-        winner={latestWinner}
-      />
       <LiveDailyRanking
         initialRanking={
           rankingResult.status === "fulfilled" ? rankingResult.value : null
         }
       />
-      <DailyWinnerArchive winners={previousWinners} />
-      <DailyWinnerCta sectionNumber={previousWinners.length ? "05" : "04"} />
+      <DailyWinnerArchive winners={completedWinners} />
+      <DailyWinnerCta sectionNumber={completedWinners.length ? "04" : "03"} />
     </div>
   );
 }

@@ -9,13 +9,13 @@ export default function LookDetailLoading() {
       <section className="look-detail__hero">
         <div className="look-detail__container look-detail__grid">
           <Skeleton className="look-detail-loading__back" />
+          <Skeleton className="look-detail-loading__status" />
+          <Skeleton className="look-detail-loading__identity" />
           <Skeleton className="look-detail-loading__stage" />
           <aside
             className="look-detail-loading__information"
             aria-hidden="true"
           >
-            <Skeleton />
-            <Skeleton />
             <Skeleton />
             <Skeleton />
             <Skeleton />
@@ -29,6 +29,7 @@ export default function LookDetailLoading() {
             <Skeleton />
           </div>
           <div className="look-detail-loading__related-grid">
+            <Skeleton />
             <Skeleton />
             <Skeleton />
             <Skeleton />

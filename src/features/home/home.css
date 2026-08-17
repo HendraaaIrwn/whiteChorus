@@ -41,6 +41,7 @@
 .home-page,
 .site-header--home,
 .site-footer--home,
+.site-footer--editorial,
 .home-menu-dialog {
   --home-bg-page: var(--home-color-background);
   --home-bg-soft: var(--home-color-background-secondary);
@@ -274,7 +275,7 @@
 
 .home-page :focus-visible,
 .site-header--home :focus-visible,
-.site-footer--home :focus-visible,
+.site-footer--editorial :focus-visible,
 .home-menu-dialog :focus-visible {
   outline: 3px solid var(--home-accent-orange);
   outline-offset: 4px;
@@ -1213,6 +1214,7 @@
 .home-statement svg:first-of-type {
   position: absolute;
   width: 112%;
+  max-width: none;
   left: -6%;
   bottom: 7%;
   color: var(--home-accent-aqua-soft);
@@ -1512,7 +1514,7 @@
 }
 
 /* Editorial footer */
-.site-footer.site-footer--home {
+.site-footer.site-footer--editorial {
   position: relative;
   overflow: hidden;
   border: 0;
@@ -1545,7 +1547,7 @@
   letter-spacing: -0.085em;
 }
 
-.site-footer--home .home-editorial-footer nav {
+.site-footer--editorial .editorial-footer__nav {
   z-index: 2;
   display: flex;
   grid-column: 1 / 9;
@@ -1553,7 +1555,7 @@
   gap: var(--home-space-5) var(--home-space-8);
 }
 
-.site-footer--home .home-editorial-footer nav a {
+.site-footer--editorial .editorial-footer__nav a {
   position: relative;
   min-height: 44px;
   color: inherit;
@@ -1563,10 +1565,10 @@
   text-decoration: none;
 }
 
-.site-footer--home .home-editorial-footer nav a::after {
+.site-footer--editorial .editorial-footer__nav a::after {
   position: absolute;
   right: 0;
-  bottom: 8px;
+  bottom: 16px;
   left: 0;
   height: 1px;
   background: currentcolor;
@@ -1576,13 +1578,13 @@
   transition: transform 280ms var(--home-ease-out);
 }
 
-.site-footer--home .home-editorial-footer nav a:hover::after,
-.site-footer--home .home-editorial-footer nav a:focus-visible::after {
+.site-footer--editorial .editorial-footer__nav a:hover::after,
+.site-footer--editorial .editorial-footer__nav a:focus-visible::after {
   transform: scaleX(1);
   transform-origin: left;
 }
 
-.home-editorial-footer__meta {
+.editorial-footer__meta {
   z-index: 2;
   display: flex;
   grid-column: 9 / 13;
@@ -1595,7 +1597,7 @@
   letter-spacing: 0.05em;
 }
 
-.site-footer--home .music-control,
+.site-footer--editorial .music-control,
 .home-menu-dialog .music-control {
   border-color: currentcolor;
   color: inherit;
@@ -1605,12 +1607,18 @@
 
 .home-editorial-footer > svg:first-of-type {
   position: absolute;
+  z-index: 0;
   width: 120%;
+  max-width: none;
   left: -10%;
   bottom: 18%;
   color: var(--home-accent-aqua-soft);
-  stroke-width: 3;
-  opacity: 0.24;
+  stroke-width: clamp(6px, 0.8vw, 12px);
+  opacity: 0.4;
+}
+
+.home-editorial-footer > svg:first-of-type path {
+  vector-effect: non-scaling-stroke;
 }
 
 .home-editorial-footer__title-lines {
@@ -2013,6 +2021,7 @@ html.home-custom-cursor-ready .home-page [data-cursor] {
   .home-page,
   .site-header--home,
   .site-footer--home,
+  .site-footer--editorial,
   .home-menu-dialog {
     --home-page-gutter: max(16px, 4.1vw);
     --home-section-y: clamp(72px, 20vw, 104px);
@@ -2451,8 +2460,8 @@ html.home-custom-cursor-ready .home-page [data-cursor] {
 
   .home-editorial-footer > .home-label,
   .home-editorial-footer__title,
-  .site-footer--home .home-editorial-footer nav,
-  .home-editorial-footer__meta {
+  .site-footer--editorial .editorial-footer__nav,
+  .editorial-footer__meta {
     grid-column: 1 / 5;
   }
 
@@ -2460,12 +2469,12 @@ html.home-custom-cursor-ready .home-page [data-cursor] {
     font-size: clamp(4.7rem, 24vw, 8rem);
   }
 
-  .site-footer--home .home-editorial-footer nav {
+  .site-footer--editorial .editorial-footer__nav {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .home-editorial-footer__meta {
+  .editorial-footer__meta {
     justify-content: flex-start;
   }
 
@@ -2499,6 +2508,7 @@ html.home-custom-cursor-ready .home-page [data-cursor] {
   .home-page,
   .site-header--home,
   .site-footer--home,
+  .site-footer--editorial,
   .home-menu-dialog {
     --home-page-gutter: 14px;
   }
@@ -2586,9 +2596,9 @@ html.home-custom-cursor-ready .home-page [data-cursor] {
   .site-header--home *,
   .site-header--home *::before,
   .site-header--home *::after,
-  .site-footer--home *,
-  .site-footer--home *::before,
-  .site-footer--home *::after,
+  .site-footer--editorial *,
+  .site-footer--editorial *::before,
+  .site-footer--editorial *::after,
   .home-menu-dialog *,
   .home-menu-dialog *::before,
   .home-menu-dialog *::after {

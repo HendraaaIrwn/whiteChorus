@@ -59,12 +59,12 @@ describe("trendingScore", () => {
 });
 
 describe("Hall of Fame presentation", () => {
-  it("keeps the public gallery at nine cards per page", () => {
-    expect(HALL_PAGE_SIZE).toBe(9);
+  it("keeps the public gallery at twelve cards per page", () => {
+    expect(HALL_PAGE_SIZE).toBe(12);
   });
 
-  it("applies the nine-card pagination invariant to database reads", async () => {
-    prismaMock.outfit.count.mockResolvedValue(19);
+  it("applies the twelve-card pagination invariant to database reads", async () => {
+    prismaMock.outfit.count.mockResolvedValue(25);
     prismaMock.outfit.findMany.mockResolvedValue([]);
 
     const result = await getHallOfFamePage({ sort: "newest", page: 2 });
@@ -72,14 +72,14 @@ describe("Hall of Fame presentation", () => {
     expect(prismaMock.outfit.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
-        skip: 9,
-        take: 9,
+        skip: 12,
+        take: 12,
       }),
     );
     expect(result.pagination).toEqual({
       page: 2,
-      pageSize: 9,
-      totalItems: 19,
+      pageSize: 12,
+      totalItems: 25,
       totalPages: 3,
     });
   });
@@ -99,14 +99,14 @@ describe("Hall of Fame presentation", () => {
           { publishedAt: "asc" },
           { id: "asc" },
         ],
-        skip: 9,
-        take: 9,
+        skip: 12,
+        take: 12,
       }),
     );
   });
 
-  it("preserves trending ranking before applying the nine-card page slice", async () => {
-    const trendingRecords = Array.from({ length: 10 }, (_, index) => ({
+  it("preserves trending ranking before applying the twelve-card page slice", async () => {
+    const trendingRecords = Array.from({ length: 13 }, (_, index) => ({
       ...cardRecord,
       id: `outfit-${String(index + 1).padStart(2, "0")}`,
       shortCode: `WC-${String(index + 1).padStart(4, "0")}`,
@@ -114,7 +114,7 @@ describe("Hall of Fame presentation", () => {
       ratings: [],
       interactions: [],
     }));
-    prismaMock.outfit.count.mockResolvedValue(10);
+    prismaMock.outfit.count.mockResolvedValue(13);
     prismaMock.outfit.findMany.mockResolvedValue(trendingRecords);
 
     const result = await getHallOfFamePage({ sort: "trending", page: 2 });
@@ -134,10 +134,36 @@ describe("Hall of Fame presentation", () => {
     expect(result.items).toHaveLength(1);
     expect(result.pagination).toEqual({
       page: 2,
-      pageSize: 9,
-      totalItems: 10,
+      pageSize: 12,
+      totalItems: 13,
       totalPages: 2,
     });
+  });
+
+  it("returns every trending look exactly once across three stable pages", async () => {
+    const trendingRecords = Array.from({ length: 25 }, (_, index) => ({
+      ...cardRecord,
+      id: `outfit-${String(index + 1).padStart(2, "0")}`,
+      shortCode: `WC-${String(index + 1).padStart(4, "0")}`,
+      weightedScore: { toString: () => String(25 - index) },
+      ratings: [],
+      interactions: [],
+    }));
+    prismaMock.outfit.count.mockResolvedValue(25);
+    prismaMock.outfit.findMany.mockResolvedValue(trendingRecords);
+
+    const pages = await Promise.all(
+      [1, 2, 3].map((page) => getHallOfFamePage({ sort: "trending", page })),
+    );
+    const pageIds = pages.map(({ items }) => items.map(({ id }) => id));
+    const allIds = pageIds.flat();
+
+    expect(pageIds.map((ids) => ids.length)).toEqual([12, 12, 1]);
+    expect(allIds).toEqual(trendingRecords.map(({ id }) => id));
+    expect(new Set(allIds).size).toBe(25);
+    expect(pages.map(({ pagination }) => pagination.totalPages)).toEqual([
+      3, 3, 3,
+    ]);
   });
 
   it("batch-loads viewer ratings and disables self-rating", async () => {
@@ -210,7 +236,7 @@ describe("Hall of Fame presentation", () => {
     ]);
   });
 
-  it("excludes the current look and returns three active looks in score order", async () => {
+  it("excludes the current look and requests four active looks in score order", async () => {
     prismaMock.outfit.findMany.mockResolvedValue([cardRecord]);
     prismaMock.dailyWinner.findMany.mockResolvedValue([
       { sourceOutfitId: "outfit-1" },
@@ -226,7 +252,7 @@ describe("Hall of Fame presentation", () => {
           expiresAt: { gt: expect.any(Date) },
         }),
         orderBy: [{ weightedScore: "desc" }, { publishedAt: "desc" }],
-        take: 3,
+        take: 4,
       }),
     );
     expect(related).toEqual([

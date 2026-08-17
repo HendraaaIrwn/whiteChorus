@@ -34,7 +34,7 @@ export function Pagination({
         </Link>
       )}
       <span>
-        {String(page).padStart(2, "0")} OF {String(totalPages).padStart(2, "0")}
+        {String(page).padStart(2, "0")} / {String(totalPages).padStart(2, "0")}
       </span>
       {page >= totalPages ? (
         <span aria-disabled="true">NEXT →</span>
