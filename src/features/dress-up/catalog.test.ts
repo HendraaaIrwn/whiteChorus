@@ -209,7 +209,9 @@ describe("dress-up asset catalog", () => {
     expect(topPosition.y).toBe(30);
 
     const layers = renderLayersFor(defaultConfiguration);
-    const friskaBase = layers.find((layer) => layer.assetId === "character-b-base");
+    const friskaBase = layers.find(
+      (layer) => layer.assetId === "character-b-base",
+    );
     const friskaTop = layers.find((layer) => layer.assetId === "friska-top-01");
     const emirTop = layers.find((layer) => layer.assetId === "emir-top-01");
     expect(friskaBase).toMatchObject({ left: 0, top: 30, kind: "base" });
@@ -217,7 +219,9 @@ describe("dress-up asset catalog", () => {
     expect(emirTop).toMatchObject({ left: 0, top: 0, kind: "wardrobe" });
 
     // Shoes remain behind bottom in paint order.
-    const friskaShoes = layers.find((layer) => layer.assetId === "friska-shoes-01");
+    const friskaShoes = layers.find(
+      (layer) => layer.assetId === "friska-shoes-01",
+    );
     const friskaBottom = layers.find(
       (layer) => layer.assetId === "friska-bottom-01",
     );
