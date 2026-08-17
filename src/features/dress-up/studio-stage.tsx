@@ -388,10 +388,10 @@ export function CharacterStage({
         <div className="character-switcher" aria-label="Choose character">
           {(
             [
-              ["character-b", "FRISKA", "B"],
-              ["character-a", "EMIR", "A"],
+              ["character-b", "FRISKA"],
+              ["character-a", "EMIR"],
             ] as const
-          ).map(([character, label, index]) => {
+          ).map(([character, label]) => {
             const active = activeCharacter === character;
             return (
               <button
@@ -414,10 +414,7 @@ export function CharacterStage({
                   width={42}
                   height={42}
                 />
-                <span>
-                  <small>{index}</small>
-                  DRESS {label}
-                </span>
+                <span>DRESS {label}</span>
                 {active ? (
                   <motion.span
                     className="character-switcher__indicator"

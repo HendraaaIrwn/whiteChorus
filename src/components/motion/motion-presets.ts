@@ -18,3 +18,20 @@ export const motionDurations = {
   slow: 0.36,
   celebration: 0.65,
 } as const;
+
+/**
+ * Shared microinteraction primitives for the "selectable card" family.
+ * The background carousel cards are the authoritative source of truth;
+ * wardrobe outfit icons reuse these exact values so hover/press/selected
+ * motion stays in the same interaction family.
+ */
+export const selectableCardHover = { y: -5, scale: 1.03 };
+
+export const selectableCardTap = { scale: 0.97 };
+
+export const selectableCardSpring = {
+  type: "spring",
+  stiffness: 420,
+  damping: 30,
+  mass: 0.7,
+} as const;
