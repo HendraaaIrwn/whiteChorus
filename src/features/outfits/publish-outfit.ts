@@ -27,12 +27,49 @@ import {
   getGeneratedAssetStorage,
   type GeneratedAssetStorage,
 } from "@/server/storage/generated-asset-storage";
+import { log } from "@/server/observability/logger";
 import { systemClock, type Clock } from "@/server/time/clock";
 
 export const publishOutfitSchema = dressUpConfigurationSchema
   .extend({ turnstileToken: z.string().nullable().optional() })
   .strict();
 export type PublishOutfitInput = z.infer<typeof publishOutfitSchema>;
+
+/**
+ * Granular server-side reason codes for a failed publish. These are logged
+ * and persisted on the Outfit row as `failureReason`, but never exposed to
+ * the client (which always sees the friendly `RENDER_FAILED` DomainError).
+ */
+export type PublishFailureReason =
+  | "SHARP_LOAD_FAILED"
+  | "SOURCE_ASSET_MISSING"
+  | "COMPOSITE_FAILED"
+  | "STORAGE_UPLOAD_FAILED"
+  | "FINALIZE_FAILED"
+  | "RENDER_FAILED";
+
+const SHARP_LOAD_PATTERN =
+  /sharp|libvips|ERR_DLOPEN_FAILED|dlopen|NODE_MODULE_VERSION|native module/i;
+const SOURCE_MISSING_PATTERN = /ENOENT|no such file or directory/i;
+const COMPOSITE_PATTERN = /composite|overlay|image not found/i;
+
+/**
+ * Classify a render-phase error into a granular reason code for logging and
+ * persistence. The client always receives the generic `RENDER_FAILED`.
+ */
+function classifyRenderError(error: unknown): PublishFailureReason {
+  if (error instanceof DomainError) return "RENDER_FAILED";
+  const message = error instanceof Error ? error.message : String(error);
+  if (SHARP_LOAD_PATTERN.test(message)) return "SHARP_LOAD_FAILED";
+  if (SOURCE_MISSING_PATTERN.test(message)) return "SOURCE_ASSET_MISSING";
+  if (COMPOSITE_PATTERN.test(message)) return "COMPOSITE_FAILED";
+  return "COMPOSITE_FAILED";
+}
+
+function describeError(error: unknown): string {
+  if (error instanceof Error) return `${error.name}: ${error.message}`;
+  return String(error);
+}
 
 type Dependencies = {
   renderer: OutfitRenderer;
@@ -210,10 +247,29 @@ export async function publishOutfit(
     dependencies.clock.now(),
   );
   let paths:
-    Awaited<ReturnType<GeneratedAssetStorage["uploadOutfit"]>> | undefined;
-  let failureReason = "RENDER_FAILED";
+    | Awaited<ReturnType<GeneratedAssetStorage["uploadOutfit"]>>
+    | undefined;
+  let failureReason: PublishFailureReason = "RENDER_FAILED";
   try {
-    const bundle = await dependencies.renderer.render(configuration);
+    let bundle;
+    try {
+      // Render phase: classify failures so operators can distinguish a
+      // missing native binary (SHARP_LOAD_FAILED) from a missing source
+      // asset (SOURCE_ASSET_MISSING) or a Sharp processing error
+      // (COMPOSITE_FAILED). The client still sees RENDER_FAILED.
+      bundle = await dependencies.renderer.render(configuration);
+    } catch (renderError) {
+      failureReason = classifyRenderError(renderError);
+      log({
+        requestId: processing.id,
+        operation: "outfit.render",
+        outfitId: processing.id,
+        result: "failure",
+        errorCode: failureReason,
+        detail: describeError(renderError),
+      });
+      throw renderError;
+    }
     failureReason = "STORAGE_UPLOAD_FAILED";
     paths = await dependencies.storage.uploadOutfit(processing.id, bundle);
     failureReason = "FINALIZE_FAILED";
@@ -257,6 +313,16 @@ export async function publishOutfit(
       })
       .catch(() => undefined);
     if (error instanceof DomainError) throw error;
+    // Log the underlying cause server-side (without secrets/stack) so
+    // RENDER_FAILED is diagnosable without leaking internals to the client.
+    log({
+      requestId: processing.id,
+      operation: "outfit.publish",
+      outfitId: processing.id,
+      result: "failure",
+      errorCode: failureReason,
+      detail: describeError(error),
+    });
     throw new DomainError(
       "RENDER_FAILED",
       "We could not create your final image. Your publication limit was not used. Please try again.",
